@@ -1,0 +1,2258 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ВЭД</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body { height:100%; min-height:100vh; }
+    body {
+        font-family:'Segoe UI', Roboto, Arial, sans-serif;
+        background:#f4f7fc; padding:20px; color:#1e2a3a;
+        display:flex; align-items:flex-start; justify-content:center;
+    }
+    .container {
+        max-width:1400px; width:100%; margin:0 auto; background:#fff;
+        border-radius:16px; box-shadow:0 8px 24px rgba(0,0,0,.08);
+        padding:25px 30px 35px; min-height:calc(100vh - 40px);
+        display:flex; flex-direction:column;
+    }
+    .header { border-bottom:2px solid #e9edf2; padding-bottom:18px; margin-bottom:20px;
+        display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; flex-shrink:0; }
+    .header-left { font-size:22px; font-weight:600; color:#0b1a2e; }
+    .header-left span { font-weight:400; color:#3e5a76; margin-left:8px; }
+    .upload-area { background:#f8faff; padding:18px 20px; border-radius:12px;
+        border:1px dashed #bcc8d9; display:flex; flex-wrap:wrap; align-items:center;
+        gap:15px; margin-bottom:25px; flex-shrink:0; }
+    .upload-group { flex:1; display:flex; flex-wrap:wrap; align-items:center; gap:8px; min-width:200px; }
+    .upload-group label { font-weight:500; color:#1f2a3f; white-space:nowrap; }
+    .upload-group input[type="file"] {
+        border:1px solid #cdd6e3; padding:6px 10px; border-radius:6px; background:#fff;
+        font-size:14px; flex:1 1 120px; min-width:100px;
+    }
+    .upload-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .upload-actions button {
+        background:#1f3a5f; border:none; color:#fff; padding:8px 28px; border-radius:30px;
+        font-weight:500; font-size:14px; cursor:pointer; transition:background .2s; white-space:nowrap;
+    }
+    .upload-actions button:hover { background:#16304d; }
+    .upload-status { font-size:14px; color:#2d5a3e; margin-left:5px; }
+
+    .tariff-upload-bottom { display:none; justify-content:flex-end; margin-top:10px; margin-bottom:0; }
+    .tariff-upload-bottom.visible { display:flex; }
+    .tariff-upload-area {
+        width:33.333%; max-width:33.333%; background:#f8faff; padding:8px 12px;
+        border-radius:10px; border:1px dashed #bcc8d9;
+        display:flex; flex-direction:row; align-items:center; flex-wrap:nowrap; gap:8px;
+        font-size:12px; overflow:hidden;
+    }
+    .tariff-upload-area label { font-weight:500; color:#1f2a3f; font-size:12px; white-space:nowrap; flex-shrink:0; }
+    .tariff-upload-area input[type="file"] {
+        border:1px solid #cdd6e3; padding:4px 6px; border-radius:6px; background:#fff;
+        font-size:11px; flex:1 1 auto; min-width:0; max-width:100%;
+        overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    }
+    .tariff-upload-area button {
+        background:#1f3a5f; border:none; color:#fff; padding:5px 12px; border-radius:16px;
+        font-weight:500; font-size:11px; cursor:pointer; transition:background .2s;
+        white-space:nowrap; flex-shrink:0;
+    }
+    .tariff-upload-area button:hover { background:#16304d; }
+    .tariff-upload-area .upload-status {
+        font-size:11px; margin-left:0; flex-shrink:0; white-space:nowrap;
+        max-width:220px; overflow:hidden; text-overflow:ellipsis;
+    }
+
+    .tabs { display:flex; gap:0; border-bottom:2px solid #dce3ec; margin-bottom:20px; flex-shrink:0; flex-wrap:wrap; }
+    .tab-button {
+        background:transparent; border:none; padding:12px 28px; font-size:16px;
+        font-weight:600; color:#5e6f82; cursor:pointer;
+        border-bottom:3px solid transparent; transition:all .2s; margin-right:4px;
+    }
+    .tab-button:hover { background:#f0f4fa; color:#1f2a3f; }
+    .tab-button.active { color:#1a3b6b; border-bottom-color:#1a3b6b; }
+    .tab-content { display:none; flex:1 1 auto; min-height:0; }
+    .tab-content.active { display:block; }
+    .section-title { font-size:18px; font-weight:600; margin:10px 0 16px 0; color:#1a2b3c;
+        display:flex; align-items:center; gap:10px; }
+    .section-title::after { content:''; flex:1; height:1px; background:#dce3ec; }
+    .section-title-with-toggle { display:flex; justify-content:space-between; align-items:center; margin:10px 0 16px 0; }
+    .section-title-with-toggle .title-text { font-size:18px; font-weight:600; color:#1a2b3c; }
+    .toggle-btn { background:transparent; border:none; font-size:18px; cursor:pointer;
+        color:#1a2b3c; padding:0 8px; transition:transform .2s; }
+    .toggle-btn:hover { color:#0b1a2e; }
+    .table-wrap { overflow-x:auto; overflow-y:visible; margin-bottom:30px;
+        border-radius:10px; border:1px solid #e2e8f0; flex:1 1 auto; min-height:0; }
+    .table-wrap.hidden { display:none; }
+    table { width:100%; border-collapse:collapse; font-size:14px; background:#fff;
+        min-width:500px; table-layout:auto; }
+    th { background:#eef2f7; color:#1f2a3f; font-weight:600; padding:10px 6px;
+        text-align:center; vertical-align:middle; position:relative; cursor:pointer;
+        user-select:none; border:1px solid #eaeef3; border-bottom:2px solid #bcc8d9;
+        white-space:nowrap; font-size:13px; }
+    th:hover { background:#e2e8f0; }
+    td { padding:6px 4px; text-align:center; vertical-align:middle;
+        border:1px solid #eaeef3; white-space:nowrap; font-size:12px; }
+
+    .date-table { table-layout: fixed; width: 100%; min-width: 0; }
+    .date-table .col-company     { width: 10%; white-space:nowrap; }
+    .date-table .col-container   { width: 9%;  white-space:nowrap; }
+    .date-table .col-carrier     { width: 8%;  white-space:nowrap; }
+    .date-table .col-priority    { width: 8%;  white-space:nowrap; }
+    .date-table .col-usefulness  { width: 7%;  white-space:nowrap; }
+    .date-table th {
+        white-space: normal; overflow-wrap: break-word; word-wrap: break-word;
+        word-break: normal; line-height: 1.15; vertical-align: middle;
+        text-align: center; padding: 8px 4px;
+    }
+    .date-table th .th-inner { display: inline-flex; align-items: center; justify-content: center; gap: 3px; flex-wrap: nowrap; max-width: 100%; }
+    .date-table th .th-text { white-space: nowrap; }
+    .date-table th .filter-indicator { white-space: nowrap; flex-shrink: 0; }
+    .date-table .sort-usefulness { display: inline-block; cursor: pointer; font-size: 11px; color: #1a3b6b; user-select: none; line-height: 1; flex-shrink: 0; }
+    .date-table .sort-usefulness:hover { color: #0b1a2e; }
+    .date-table .col-date { width: auto; min-width: 0; max-width: none; white-space: nowrap; font-size: 11px; padding: 6px 1px; overflow: hidden; }
+    .date-table th.col-date { padding: 8px 1px; font-size: 11px; white-space: nowrap; overflow-wrap: normal; word-break: normal; }
+
+    /* ==== Обычная сводка по складам ==== */
+    .summary-table th, .summary-table td { padding:10px 14px; border:1px solid #eaeef3; font-size:14px; }
+    .summary-table th { text-align:center; border-bottom:2px solid #bcc8d9; }
+    .summary-table td { text-align:left; }
+    .summary-table tbody td:not(:first-child),
+    .summary-table .total-row td:not(:first-child) { text-align:center; }
+    .summary-table .total-row { background:#f2f6fc; font-weight:600; border-top:2px solid #bcc8d9; }
+    .summary-table .total-row td { border-top:2px solid #bcc8d9; }
+    .summary-table .col-in-transit, .summary-table .col-new-total { background:#f2f6fc; border-left:2px solid #bcc8d9; }
+    .summary-table .total-row .col-in-transit, .summary-table .total-row .col-new-total { background:#f2f6fc; border-left:2px solid #bcc8d9; }
+
+    .date-table th { background:#e7edf5; }
+    .date-table td { border:1px solid #eaeef3; }
+    .date-table .company-col { text-align:left; font-weight:500; }
+    .date-table .container-col { text-align:left; font-weight:500; }
+    .date-table .carrier-col { text-align:center; font-weight:500; }
+    .date-table .priority-col { text-align:center; font-weight:500; }
+    .date-table .usefulness-col { text-align:center; font-weight:500; }
+    .date-table .total-row td { background:#f2f6fc; font-weight:600; border-top:2px solid #bcc8d9; font-size:12px; }
+
+    .date-table td.col-date .storage-cost { font-size:10px; color:#c0392b; font-weight:700; margin-left:0; white-space:nowrap; letter-spacing:-0.2px; }
+    .date-table td.col-date .storage-cost.no-data { font-size:9px; color:#8a97a8; font-weight:600; }
+
+    /* ==== Индикатор статуса (цветной кружок) ==== */
+    .date-table td.col-date .status-dot {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        margin-left: 4px;
+        vertical-align: middle;
+        cursor: help;
+        flex-shrink: 0;
+    }
+    .date-table td.col-date .status-dot.confirmed {
+        background: #2e7d32;
+        box-shadow: 0 0 0 2px rgba(46,125,50,.18);
+    }
+    .date-table td.col-date .status-dot.pending {
+        background: #f9a825;
+        box-shadow: 0 0 0 2px rgba(249,168,37,.22);
+    }
+
+    /* ==== Подсветка платных / будущих платных ячеек ==== */
+    .date-table td.col-date.future-cell {
+        background: #fff8e1;
+        color: #e65100;
+        font-weight: 700;
+    }
+    .summary-terminal-table td.col-date.paid-cell {
+        background: #ffebee;
+        color: #c62828;
+        font-weight: 700;
+    }
+    .summary-terminal-table td.col-date.paid-cell .storage-cost { color: #c62828; }
+
+    .badge-company { display:inline-block; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:500; color:#1d3b5a; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis; vertical-align:middle; }
+    .badge-company.instro { background:#c8e6c9; color:#1e3a2a; }
+    .badge-company.kaskad { background:#ffcdd2; color:#4a1a1a; }
+    .badge-company.marnix { background:#ffe0b2; color:#4a3a1a; }
+    .badge-company.novotech { background:#bbdefb; color:#1a2a4a; }
+    .badge-company.kreuss { background:#e1bee7; color:#3a1a4a; }
+    .badge-company.tehnomir { background:#fff9c4; color:#4a4a1a; }
+    .badge-company.multi { background:#d7ccc8; color:#3e2723; }
+
+    .footer-note { margin-top:20px; font-size:13px; color:#6a7e96; text-align:right; border-top:1px solid #e2e8f0; padding-top:18px; flex-shrink:0; }
+    .empty-message { padding:30px; text-align:center; color:#6a7e96; font-size:15px; }
+    .date-header { background:#dce6f0; font-weight:700; text-align:center; font-size:12px; padding:6px 2px; }
+    .date-group-header { background:#dce6f0; font-weight:700; text-align:center; font-size:13px; padding:8px 4px; }
+    .filter-indicator { font-size:12px; margin-left:0; }
+    .filter-dropdown { display:none; position:fixed; background:#fff; border:1px solid #cdd6e3; border-radius:4px; padding:4px 4px; margin:0; z-index:1000; min-width:250px; width:auto; max-width:none; max-height:none; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,.1); min-height:50px; }
+    .filter-dropdown.open { display:block; }
+    .filter-dropdown .search-input { width:100%; padding:4px 6px; margin-bottom:4px; border:1px solid #cdd6e3; border-radius:3px; font-size:12px; box-sizing:border-box; }
+    .filter-dropdown .search-input:focus { outline:none; border-color:#1a3b6b; }
+    .filter-dropdown .option-list { max-height:none; overflow-y:visible; }
+    .filter-dropdown label { display:block; padding:3px 8px; font-weight:400; font-size:13px; cursor:pointer; white-space:nowrap; text-align:left; }
+    .filter-dropdown label:hover { background:#f0f4fa; }
+    .filter-dropdown input[type="checkbox"] { margin-right:6px; }
+    .filter-dropdown .filter-actions { padding:4px 8px; border-top:1px solid #eaeef3; margin-top:4px; text-align:right; }
+    .filter-dropdown .filter-actions button { background:transparent; border:none; color:#1a3b6b; font-size:12px; cursor:pointer; padding:2px 6px; }
+    .filter-dropdown .filter-actions button:hover { text-decoration:underline; }
+
+    /* ============================================================
+       СВОДНЫЕ ТАБЛИЦЫ (терминал / разгрузка / в пути)
+       ============================================================ */
+    .summary-terminal-table {
+        table-layout: fixed !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        border-collapse: collapse;
+    }
+    .summary-terminal-table th,
+    .summary-terminal-table td {
+        overflow: hidden;
+        box-sizing: border-box;
+    }
+    .summary-terminal-table th.col-company,
+    .summary-terminal-table td.col-company {
+        width: 10%;
+        max-width: 10%;
+        min-width: 0;
+        white-space: nowrap;
+        overflow-wrap: normal;
+        word-break: normal;
+        text-overflow: ellipsis;
+        padding: 4px 3px;
+        text-align: left;
+        line-height: 1.15;
+    }
+    .summary-terminal-table th.col-company { font-size: 13px; }
+    .summary-terminal-table td.col-company { font-size: 12px; }
+    .summary-terminal-table .total-row .col-company { font-size: 12px; }
+
+    .summary-terminal-table th.col-date,
+    .summary-terminal-table td.col-date {
+        width: auto;
+        min-width: 0;
+        max-width: none;
+        white-space: normal;
+        overflow-wrap: break-word;
+        word-break: normal;
+        font-size: 10px;
+        padding: 4px 0;
+        line-height: 1.1;
+        border-left: 1px solid #bcc8d9;
+        border-right: none;
+    }
+    .summary-terminal-table th.col-total,
+    .summary-terminal-table td.col-total {
+        width: 100px;
+        min-width: 100px;
+        max-width: 100px;
+        white-space: nowrap;
+        font-size: 10px;
+        padding: 4px 4px;
+        overflow: visible;
+    }
+    .summary-terminal-table th.date-group-header {
+        background: #dce6f0;
+        font-weight: 700;
+        text-align: center;
+        font-size: 11px;
+        padding: 6px 4px;
+        white-space: normal;
+        overflow-wrap: break-word;
+    }
+    .summary-terminal-table th.date-header {
+        background: #e7edf5;
+        font-size: 10px;
+        padding: 4px 0;
+        white-space: normal;
+        overflow-wrap: break-word;
+        line-height: 1.1;
+        font-weight: 600;
+    }
+    .summary-terminal-table td.col-total .storage-cost {
+        font-size: 9px;
+        color: #c0392b;
+        font-weight: 700;
+        margin-left: 2px;
+        white-space: nowrap;
+        letter-spacing: -0.2px;
+    }
+
+    @media (max-width:768px) {
+        body { padding:10px; }
+        .container { padding:15px; min-height:calc(100vh - 20px); }
+        .header { flex-direction:column; align-items:flex-start; gap:8px; }
+        .upload-area { flex-direction:column; align-items:stretch; }
+        .upload-group { flex:1 1 auto; }
+        .upload-actions { justify-content:stretch; }
+        .upload-actions button { flex:1; }
+        table { font-size:12px; min-width:480px; }
+        .date-table { min-width:0; }
+        th, td { padding:6px 4px; }
+        .filter-dropdown { min-width:200px; }
+        td { font-size:11px; }
+        .badge-company { font-size:11px; }
+        .date-header { font-size:10px; }
+        .section-title-with-toggle { flex-wrap:wrap; }
+        .tariff-upload-area { width:100%; max-width:100%; flex-wrap:wrap; }
+    }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <div class="header-left">ВЭД <span id="currentDateDisplay"></span></div>
+    </div>
+
+    <div class="upload-area">
+        <div class="upload-group">
+            <label for="fileInput">📂 Список КНТ:</label>
+            <input type="file" id="fileInput" accept=".xlsx,.xls" />
+        </div>
+        <div class="upload-group">
+            <label for="fileInput2">📂 КНТ в пути:</label>
+            <input type="file" id="fileInput2" accept=".xlsx,.xls" />
+        </div>
+        <div class="upload-actions">
+            <button id="uploadAllBtn" type="button">Загрузить все</button>
+            <span id="uploadStatus" class="upload-status"></span>
+            <span id="uploadStatus2" class="upload-status" style="display:inline-block;margin-left:10px;"></span>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-button active" data-tab="summary" type="button">Сводная</button>
+        <button class="tab-button" data-tab="unload" type="button">КНТ на разгрузку</button>
+        <button class="tab-button" data-tab="detail" type="button">КНТ на терминале</button>
+        <button class="tab-button" data-tab="intransit" type="button">КНТ в пути</button>
+    </div>
+
+    <div id="summary-tab" class="tab-content active">
+        <div class="section-title">Сводка по складам</div>
+        <div class="table-wrap" id="summary-table-wrap">
+            <div class="empty-message">Загрузите файл для отображения данных</div>
+        </div>
+    </div>
+
+    <div id="unload-tab" class="tab-content">
+        <div class="section-title-with-toggle">
+            <span class="title-text">Сводная по КНТ на разгрузку</span>
+            <button class="toggle-btn" id="toggleSummaryBtnUnload" type="button">▼</button>
+        </div>
+        <div class="table-wrap" id="summary-unload-wrap">
+            <div class="empty-message">Загрузите файл для отображения данных</div>
+        </div>
+        <div class="section-title-with-toggle">
+            <span class="title-text">Детализация по контейнерам</span>
+            <button class="toggle-btn" id="toggleDetailBtnUnload" type="button">▲</button>
+        </div>
+        <div class="table-wrap hidden" id="detail-unload-wrap">
+            <div class="empty-message">Загрузите файл для отображения данных</div>
+        </div>
+    </div>
+
+    <div id="detail-tab" class="tab-content">
+        <div class="section-title-with-toggle">
+            <span class="title-text">Сводная по КНТ на терминале</span>
+            <button class="toggle-btn" id="toggleSummaryBtnTerminal" type="button">▼</button>
+        </div>
+        <div class="table-wrap" id="summary-terminal-wrap">
+            <div class="empty-message">Загрузите файл для отображения данных</div>
+        </div>
+        <div class="section-title-with-toggle">
+            <span class="title-text">Детализация по контейнерам</span>
+            <button class="toggle-btn" id="toggleDetailBtnTerminal" type="button">▲</button>
+        </div>
+        <div class="table-wrap hidden" id="detail-table-wrap">
+            <div class="empty-message">Загрузите файл для отображения данных</div>
+        </div>
+    </div>
+
+    <div id="intransit-tab" class="tab-content">
+        <div class="section-title-with-toggle">
+            <span class="title-text">Сводная по КНТ в пути</span>
+            <button class="toggle-btn" id="toggleSummaryBtnInTransit" type="button">▼</button>
+        </div>
+        <div class="table-wrap" id="summary-intransit-wrap">
+            <div class="empty-message">Загрузите файл «КНТ в пути» для отображения данных</div>
+        </div>
+        <div class="section-title-with-toggle" id="detail-intransit-section" style="display:none;">
+            <span class="title-text">Детализация по контейнерам</span>
+            <button class="toggle-btn" id="toggleDetailBtnInTransit" type="button">▲</button>
+        </div>
+        <div class="table-wrap hidden" id="detail-intransit-wrap" style="display:none;">
+            <div class="empty-message">Загрузите файл «КНТ в пути» для отображения данных</div>
+        </div>
+    </div>
+
+    <div class="tariff-upload-bottom" id="tariffUploadBlock">
+        <div class="tariff-upload-area">
+            <label for="tariffFileInput">📂 Тарифы:</label>
+            <input type="file" id="tariffFileInput" accept=".xlsx,.xls" />
+            <button id="uploadTariffBtn" type="button">Загрузить</button>
+            <span id="tariffUploadStatus" class="upload-status"></span>
+        </div>
+    </div>
+
+    <div class="footer-note" id="footerNote">Данные не загружены</div>
+</div>
+
+<script>
+/* ============================================================
+   ОБЩИЕ ДАННЫЕ
+   ============================================================ */
+let summaryRows = [];
+let detailRows = [];
+let inTransitData = {};
+let inTransitRows = [];
+let inTransitFileLoaded = false;
+let inTransitSummary = { companies: [], dates: [], map: new Map() };
+
+let tariffData = {};
+let tariffFileName = '';
+let tariffMeta = { carriers: 0, terminals: 0 };
+const TARIFF_STORAGE_KEY = 'ved_tariff_data_v3';
+
+let selectedCompanyTerminal = [];
+let selectedContainerTerminal = [];
+let selectedCarrierTerminal = [];
+let selectedPriorityTerminal = [];
+let selectedUsefulnessTerminal = [];
+let usefulnessSortDescTerminal = false;
+let openedDropdownIdTerminal = null;
+let detailVisibleTerminal = false;
+let summaryVisibleTerminal = true;
+
+let selectedCompanyUnload = [];
+let selectedContainerUnload = [];
+let selectedCarrierUnload = [];
+let selectedPriorityUnload = [];
+let openedDropdownIdUnload = null;
+let detailVisibleUnload = false;
+let summaryVisibleUnload = true;
+
+let selectedCompanyInTransit = [];
+let openedDropdownIdInTransit = null;
+let detailVisibleInTransit = false;
+let summaryVisibleInTransit = true;
+
+/* ============================================================
+   DOM
+   ============================================================ */
+const fileInput = document.getElementById('fileInput');
+const fileInput2 = document.getElementById('fileInput2');
+const uploadAllBtn = document.getElementById('uploadAllBtn');
+const uploadStatus = document.getElementById('uploadStatus');
+const uploadStatus2 = document.getElementById('uploadStatus2');
+
+const tariffFileInput = document.getElementById('tariffFileInput');
+const uploadTariffBtn = document.getElementById('uploadTariffBtn');
+const tariffUploadStatus = document.getElementById('tariffUploadStatus');
+const tariffUploadBlock = document.getElementById('tariffUploadBlock');
+
+const summaryWrap = document.getElementById('summary-table-wrap');
+const detailWrap = document.getElementById('detail-table-wrap');
+const summaryTerminalWrap = document.getElementById('summary-terminal-wrap');
+const detailUnloadWrap = document.getElementById('detail-unload-wrap');
+const summaryUnloadWrap = document.getElementById('summary-unload-wrap');
+const summaryInTransitWrap = document.getElementById('summary-intransit-wrap');
+const detailInTransitWrap = document.getElementById('detail-intransit-wrap');
+
+const toggleSummaryBtnTerminal = document.getElementById('toggleSummaryBtnTerminal');
+const toggleDetailBtnTerminal = document.getElementById('toggleDetailBtnTerminal');
+const toggleSummaryBtnUnload = document.getElementById('toggleSummaryBtnUnload');
+const toggleDetailBtnUnload = document.getElementById('toggleDetailBtnUnload');
+const toggleSummaryBtnInTransit = document.getElementById('toggleSummaryBtnInTransit');
+const toggleDetailBtnInTransit = document.getElementById('toggleDetailBtnInTransit');
+
+const footerNote = document.getElementById('footerNote');
+const currentDateDisplay = document.getElementById('currentDateDisplay');
+
+/* ============================================================
+   СОХРАНЕНИЕ / ВОССТАНОВЛЕНИЕ ТАРИФОВ
+   ============================================================ */
+function saveTariffData() {
+    try {
+        const payload = { data: tariffData, fileName: tariffFileName, meta: tariffMeta, savedAt: new Date().toISOString() };
+        localStorage.setItem(TARIFF_STORAGE_KEY, JSON.stringify(payload));
+        return true;
+    } catch (err) { return false; }
+}
+function loadTariffData() {
+    try {
+        const raw = localStorage.getItem(TARIFF_STORAGE_KEY);
+        if (!raw) return false;
+        const payload = JSON.parse(raw);
+        if (!payload || typeof payload.data !== 'object') return false;
+        tariffData = payload.data || {};
+        tariffFileName = payload.fileName || '';
+        tariffMeta = payload.meta || { carriers: 0, terminals: 0 };
+        return true;
+    } catch (err) { return false; }
+}
+function updateTariffStatusFromMemory() {
+    if (tariffMeta.carriers > 0 && tariffMeta.terminals > 0) {
+        const name = tariffFileName ? ` «${tariffFileName}»` : '';
+        tariffUploadStatus.textContent = `✅ Тарифы${name}: ${tariffMeta.carriers} перевоз., ${tariffMeta.terminals} терм.`;
+        tariffUploadStatus.style.color = '#1f7b4d';
+        tariffUploadStatus.title = `Файл: ${tariffFileName || '—'}\nПеревозчиков: ${tariffMeta.carriers}\nТерминалов: ${tariffMeta.terminals}`;
+    } else {
+        tariffUploadStatus.textContent = 'Файл не выбран';
+        tariffUploadStatus.style.color = '#6a7e96';
+        tariffUploadStatus.title = '';
+    }
+}
+
+/* ============================================================
+   ПАРСЕР ФАЙЛА ТАРИФОВ
+   ============================================================ */
+function parseTariffWorkbook(workbook) {
+    const result = {}; let totalTerminals = 0; let totalCarriers = 0;
+    workbook.SheetNames.forEach(sheetName => {
+        const carrier = String(sheetName).trim(); if (!carrier) return;
+        const sheet = workbook.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+        if (!rows || rows.length === 0) return;
+        let headerIdx = -1;
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i]; if (!row) continue;
+            const first = String(row[0] == null ? '' : row[0]).trim().toLowerCase();
+            if (first === 'терминал' || first.includes('терминал')) { headerIdx = i; break; }
+        }
+        if (headerIdx === -1) return;
+        const dayByCol = {};
+        const headerRow = rows[headerIdx] || [];
+        for (let j = 1; j < headerRow.length; j++) {
+            const raw = String(headerRow[j] == null ? '' : headerRow[j]).trim();
+            const n = parseInt(raw, 10);
+            if (!isNaN(n) && n > 0) dayByCol[j] = n;
+        }
+        if (Object.keys(dayByCol).length === 0) return;
+        const terminalMap = {};
+        for (let i = headerIdx + 1; i < rows.length; i++) {
+            const row = rows[i]; if (!row || row.length === 0) continue;
+            const terminal = String(row[0] == null ? '' : row[0]).trim(); if (!terminal) continue;
+            const schedule = [];
+            for (const jStr in dayByCol) {
+                const j = parseInt(jStr, 10); const raw = row[j];
+                if (raw === '' || raw === null || raw === undefined) continue;
+                const cost = parseFloat(raw); if (isNaN(cost)) continue;
+                schedule.push({ day: dayByCol[j], cost: cost });
+            }
+            if (schedule.length === 0) continue;
+            schedule.sort((a, b) => a.day - b.day);
+            terminalMap[terminal] = schedule;
+            totalTerminals++;
+        }
+        if (Object.keys(terminalMap).length > 0) { result[carrier] = terminalMap; totalCarriers++; }
+    });
+    return { data: result, carriers: totalCarriers, terminals: totalTerminals };
+}
+
+/* ============================================================
+   РАСЧЁТ СТОИМОСТИ ХРАНЕНИЯ
+   ============================================================ */
+function getTodayZero() { const d = new Date(); d.setHours(0,0,0,0); return d; }
+function findCarrier(carrier) {
+    if (!carrier) return null;
+    if (tariffData[carrier]) return tariffData[carrier];
+    const key = String(carrier).trim().toLowerCase();
+    for (const k in tariffData) { if (k.toLowerCase() === key) return tariffData[k]; }
+    return null;
+}
+
+function findTerminal(carrierMap, terminal) {
+    if (!carrierMap || !terminal) return null;
+    const target = String(terminal).trim();
+    if (!target) return null;
+
+    if (carrierMap[target]) return carrierMap[target];
+
+    const targetLower = target.toLowerCase();
+    for (const k in carrierMap) {
+        if (k.toLowerCase() === targetLower) return carrierMap[k];
+    }
+
+    const splitWords = (s) => String(s).trim().toLowerCase()
+        .split(/[\s\-,./\\|]+/).filter(Boolean);
+    const targetWords = splitWords(target);
+    if (targetWords.length === 0) return null;
+
+    const firstWord = targetWords[0];
+    let bestMatch = null;
+    let bestScore = -Infinity;
+
+    for (const k in carrierMap) {
+        const keyWords = splitWords(k);
+        if (keyWords.length === 0) continue;
+        if (keyWords[0] !== firstWord) continue;
+
+        let matched = 0;
+        const minLen = Math.min(targetWords.length, keyWords.length);
+        for (let i = 0; i < minLen; i++) {
+            if (targetWords[i] === keyWords[i]) matched++;
+            else break;
+        }
+        const score = matched * 1000 - Math.abs(targetWords.length - keyWords.length);
+        if (score > bestScore) {
+            bestScore = score;
+            bestMatch = carrierMap[k];
+        }
+    }
+    if (bestMatch) return bestMatch;
+
+    for (const k in carrierMap) {
+        const kLower = k.toLowerCase();
+        if (kLower.startsWith(targetLower) || targetLower.startsWith(kLower)) {
+            return carrierMap[k];
+        }
+    }
+
+    return null;
+}
+
+function calcStorageCost(carrier, terminal, unloadDateStr) {
+    if (!carrier || !terminal) return null;
+    if (!unloadDateStr) return null;
+    const carrierMap = findCarrier(carrier);
+    if (!carrierMap) return null;
+    const schedule = findTerminal(carrierMap, terminal);
+    if (!schedule || schedule.length === 0) return null;
+    const unload = new Date(unloadDateStr);
+    if (isNaN(unload.getTime())) return null;
+    unload.setHours(0, 0, 0, 0);
+    const today = getTodayZero();
+    const days = Math.floor((today - unload) / 86400000);
+    if (days <= 0) return 0;
+    let cost = 0;
+    for (const entry of schedule) { if (entry.day <= days) cost += entry.cost; else break; }
+    return cost;
+}
+
+/* ============================================================
+   АНАЛИЗ ПЛАТНОСТИ КОНТЕЙНЕРА
+   ============================================================ */
+function analyzeContainerPayment(item) {
+    const cost = calcStorageCost(item.carrier, item.terminal, item.unloadDate);
+    if (cost === null) return { status: 'nodata', cost: 0, futureCost: 0, futureDate: null, daysUntilPaid: 0 };
+    if (cost > 0) return { status: 'paid', cost: cost, futureCost: 0, futureDate: null, daysUntilPaid: 0 };
+
+    // Сейчас бесплатный — проверяем, станет ли платным в ближайшие 3 дня
+    const carrierMap = findCarrier(item.carrier);
+    if (!carrierMap) return { status: 'free', cost: 0, futureCost: 0, futureDate: null, daysUntilPaid: 0 };
+    const schedule = findTerminal(carrierMap, item.terminal);
+    if (!schedule || schedule.length === 0) return { status: 'free', cost: 0, futureCost: 0, futureDate: null, daysUntilPaid: 0 };
+
+    const unload = new Date(item.unloadDate);
+    if (isNaN(unload.getTime())) return { status: 'free', cost: 0, futureCost: 0, futureDate: null, daysUntilPaid: 0 };
+    unload.setHours(0, 0, 0, 0);
+    const today = getTodayZero();
+    const currentDays = Math.floor((today - unload) / 86400000);
+
+    for (let d = 1; d <= 3; d++) {
+        const futureDays = currentDays + d;
+        let futureCostVal = 0;
+        for (const entry of schedule) {
+            if (entry.day <= futureDays) futureCostVal += entry.cost;
+            else break;
+        }
+        if (futureCostVal > 0) {
+            const futureDate = new Date(today);
+            futureDate.setDate(futureDate.getDate() + d);
+            return { status: 'future', cost: 0, futureCost: futureCostVal, futureDate: futureDate, daysUntilPaid: d };
+        }
+    }
+    return { status: 'free', cost: 0, futureCost: 0, futureDate: null, daysUntilPaid: 0 };
+}
+
+function formatShortDate(date) {
+    if (!date) return '';
+    const d = date instanceof Date ? date : new Date(date);
+    if (isNaN(d.getTime())) return '';
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    return `${dd}.${mm}`;
+}
+
+/* Агрегирует статусы всех контейнеров в ячейке сводной */
+function analyzeCellPayment(containers) {
+    let paidCount = 0;
+    let paidSum = 0;
+    let futureTotal = 0;
+    const futureByDate = new Map(); // 'ДД.ММ' -> { count, cost }
+
+    containers.forEach(c => {
+        const a = analyzeContainerPayment(c);
+        if (a.status === 'paid') {
+            paidCount++;
+            paidSum += a.cost;
+        } else if (a.status === 'future') {
+            const key = formatShortDate(a.futureDate);
+            if (!futureByDate.has(key)) futureByDate.set(key, { count: 0, cost: 0 });
+            const info = futureByDate.get(key);
+            info.count++;
+            info.cost += a.futureCost;
+            futureTotal++;
+        }
+    });
+
+    const isPaid = paidCount > 0;
+    const isFuture = futureTotal > 0;
+
+    let tooltip = '';
+    if (isPaid) {
+        tooltip += `Платные - ${paidCount} (${Math.round(paidSum)})`;
+    }
+    if (isFuture) {
+        const parts = [];
+        futureByDate.forEach((info, dateStr) => {
+            parts.push(`${dateStr} (${Math.round(info.cost)})`);
+        });
+        if (tooltip) tooltip += '\n';
+        tooltip += `Станет платным - ${futureTotal} ${parts.join(', ')}`;
+    }
+
+    return { isPaid, isFuture, tooltip };
+}
+
+/* ============================================================
+   ДАТА
+   ============================================================ */
+const now = new Date();
+const day = String(now.getDate()).padStart(2, '0');
+const month = String(now.getMonth() + 1).padStart(2, '0');
+const year = now.getFullYear();
+currentDateDisplay.textContent = `${day}.${month}.${year}`;
+
+/* ============================================================
+   СВОРАЧИВАНИЕ
+   ============================================================ */
+toggleSummaryBtnTerminal.addEventListener('click', function() {
+    summaryVisibleTerminal = !summaryVisibleTerminal;
+    if (summaryVisibleTerminal) { summaryTerminalWrap.classList.remove('hidden'); toggleSummaryBtnTerminal.textContent = '▼'; }
+    else { summaryTerminalWrap.classList.add('hidden'); toggleSummaryBtnTerminal.textContent = '▲'; }
+});
+toggleDetailBtnTerminal.addEventListener('click', function() {
+    detailVisibleTerminal = !detailVisibleTerminal;
+    if (detailVisibleTerminal) { detailWrap.classList.remove('hidden'); toggleDetailBtnTerminal.textContent = '▼'; }
+    else { detailWrap.classList.add('hidden'); toggleDetailBtnTerminal.textContent = '▲'; }
+});
+toggleSummaryBtnUnload.addEventListener('click', function() {
+    summaryVisibleUnload = !summaryVisibleUnload;
+    if (summaryVisibleUnload) { summaryUnloadWrap.classList.remove('hidden'); toggleSummaryBtnUnload.textContent = '▼'; }
+    else { summaryUnloadWrap.classList.add('hidden'); toggleSummaryBtnUnload.textContent = '▲'; }
+});
+toggleDetailBtnUnload.addEventListener('click', function() {
+    detailVisibleUnload = !detailVisibleUnload;
+    if (detailVisibleUnload) { detailUnloadWrap.classList.remove('hidden'); toggleDetailBtnUnload.textContent = '▼'; }
+    else { detailUnloadWrap.classList.add('hidden'); toggleDetailBtnUnload.textContent = '▲'; }
+});
+toggleSummaryBtnInTransit.addEventListener('click', function() {
+    summaryVisibleInTransit = !summaryVisibleInTransit;
+    if (summaryVisibleInTransit) { summaryInTransitWrap.classList.remove('hidden'); toggleSummaryBtnInTransit.textContent = '▼'; }
+    else { summaryInTransitWrap.classList.add('hidden'); toggleSummaryBtnInTransit.textContent = '▲'; }
+});
+if (toggleDetailBtnInTransit) {
+    toggleDetailBtnInTransit.addEventListener('click', function() {
+        detailVisibleInTransit = !detailVisibleInTransit;
+        if (detailVisibleInTransit) { detailInTransitWrap.classList.remove('hidden'); toggleDetailBtnInTransit.textContent = '▼'; }
+        else { detailInTransitWrap.classList.add('hidden'); toggleDetailBtnInTransit.textContent = '▲'; }
+    });
+}
+
+/* ============================================================
+   ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК
+   ============================================================ */
+document.querySelectorAll('.tab-button').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        const tabName = this.dataset.tab;
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById(tabName + '-tab').classList.add('active');
+        if (tabName === 'detail') tariffUploadBlock.classList.add('visible');
+        else tariffUploadBlock.classList.remove('visible');
+    });
+});
+
+/* ============================================================
+   ВСПОМОГАТЕЛЬНЫЕ
+   ============================================================ */
+function getUniqueValues(data, key) {
+    const values = data.map(item => String(item[key] || '').trim()).filter(v => v !== '');
+    return [...new Set(values)].sort();
+}
+function getUniqueNumericValues(data, key) {
+    const values = data.map(item => {
+        const v = item[key];
+        if (v === undefined || v === null || v === '') return null;
+        return String(v);
+    }).filter(v => v !== null);
+    const uniq = [...new Set(values)];
+    uniq.sort((a, b) => {
+        const na = parseFloat(a), nb = parseFloat(b);
+        if (!isNaN(na) && !isNaN(nb)) return na - nb;
+        return a.localeCompare(b);
+    });
+    return uniq;
+}
+function parseNumberOrText(value, defaultNumber) {
+    if (value === undefined || value === null) return defaultNumber;
+    const s = String(value).trim();
+    if (s === '') return defaultNumber;
+    const n = parseFloat(s);
+    if (!isNaN(n)) return n;
+    return s;
+}
+function closeAllDropdowns(exceptId) {
+    document.querySelectorAll('.filter-dropdown').forEach(dd => {
+        if (dd.id !== exceptId) {
+            dd.classList.remove('open');
+            dd.style.top = ''; dd.style.left = '';
+            dd.style.maxHeight = ''; dd.style.width = '';
+        }
+    });
+    if (!exceptId) {
+        openedDropdownIdTerminal = null;
+        openedDropdownIdUnload = null;
+        openedDropdownIdInTransit = null;
+    }
+}
+function adjustDropdownPosition(dropdown) {
+    const th = dropdown.closest('th'); if (!th) return;
+    const rect = th.getBoundingClientRect();
+    const windowHeight = window.innerHeight;
+    const windowWidth = window.innerWidth;
+    const maxHeight = 600;
+    let dropdownHeight = Math.min(dropdown.scrollHeight || 200, maxHeight);
+    const margin = 0;
+    let top = rect.bottom;
+    const availableBelow = windowHeight - top - margin;
+    const availableAbove = rect.top - margin;
+    if (availableBelow < dropdownHeight && availableAbove > dropdownHeight) top = rect.top - dropdownHeight;
+    if (top < margin) { top = margin; dropdownHeight = Math.min(dropdownHeight, windowHeight - top - margin); }
+    if (top + dropdownHeight > windowHeight - margin) dropdownHeight = windowHeight - top - margin;
+    if (dropdownHeight < 50) dropdownHeight = 50;
+    let left = rect.left;
+    if (left + 250 > windowWidth) left = windowWidth - 250;
+    if (left < margin) left = margin;
+    dropdown.style.position = 'fixed';
+    dropdown.style.top = top + 'px';
+    dropdown.style.left = left + 'px';
+    dropdown.style.maxHeight = dropdownHeight + 'px';
+    dropdown.style.width = 'auto';
+    dropdown.style.minWidth = '250px';
+    dropdown.style.maxWidth = 'none';
+    dropdown.style.margin = '0';
+}
+function buildFilterDropdown(filterKey, values, selectedArray) {
+    let html = `<div class="filter-dropdown" id="dropdown-${filterKey}">
+        <input type="text" class="search-input" placeholder="Поиск..." />
+        <div class="option-list">`;
+    values.forEach(val => {
+        const checked = selectedArray.includes(val) ? 'checked' : '';
+        html += `<label><input type="checkbox" value="${val}" ${checked}> ${val}</label>`;
+    });
+    html += `</div><div class="filter-actions">
+        <button class="select-all" data-filter="${filterKey}" type="button">Выбрать все</button>
+        <button class="clear-all" data-filter="${filterKey}" type="button">Сбросить</button>
+    </div></div>`;
+    return html;
+}
+function parseExcelDate(value) {
+    if (value === undefined || value === null || value === '') return '';
+    if (typeof value === 'number') {
+        const jsDate = new Date((value - 25569) * 86400 * 1000);
+        return jsDate.toISOString().split('T')[0];
+    }
+    const str = String(value).trim();
+    if (str.includes(' ')) return str.split(' ')[0];
+    if (!isNaN(parseFloat(str)) && str.indexOf('.') === -1) {
+        const excelDate = parseFloat(str);
+        if (!isNaN(excelDate) && excelDate > 0) {
+            const jsDate = new Date((excelDate - 25569) * 86400 * 1000);
+            return jsDate.toISOString().split('T')[0];
+        }
+    }
+    return str;
+}
+function normalizeDate(value) {
+    if (value === undefined || value === null || value === '') return '';
+    if (value instanceof Date) {
+        return value.toISOString().split('T')[0];
+    }
+    if (typeof value === 'number') {
+        if (value > 20000 && value < 80000) {
+            const jsDate = new Date((value - 25569) * 86400 * 1000);
+            return jsDate.toISOString().split('T')[0];
+        }
+        return '';
+    }
+    const str = String(value).trim();
+    let m = str.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
+    if (m) {
+        let yy = m[3];
+        if (yy.length === 2) yy = '20' + yy;
+        return `${yy}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+    }
+    m = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return m[0];
+    return '';
+}
+function looksLikeDate(v) {
+    if (v === undefined || v === null || v === '') return false;
+    if (typeof v === 'number') return v > 20000 && v < 80000;
+    return /^\d{1,4}[./-]\d{1,2}[./-]\d{2,4}/.test(String(v).trim());
+}
+function looksLikeContainer(v) {
+    if (v === undefined || v === null || v === '') return false;
+    const s = String(v).trim();
+    return /^[A-Z]{2,4}\d{5,8}$/i.test(s) || /^[A-Z0-9]{8,15}$/i.test(s);
+}
+function fmtCount(v) {
+    if (v === undefined || v === null || isNaN(v)) return '0';
+    if (Math.abs(v - Math.round(v)) < 1e-9) return String(Math.round(v));
+    return v.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function formatTooltipDate(dateStr) {
+    if (!dateStr) return '';
+    const s = String(dateStr).trim();
+    if (!s) return '';
+    let m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (m) return `${m[3]}.${m[2]}.${m[1]}`;
+    m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+    if (m) return `${m[1].padStart(2, '0')}.${m[2].padStart(2, '0')}.${m[3]}`;
+    m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m) return `${m[1].padStart(2, '0')}.${m[2].padStart(2, '0')}.${m[3]}`;
+    return s;
+}
+
+/* ============================================================
+   СВОДНАЯ (терминал) — с подсветкой платных и будущих платных
+   ============================================================ */
+function buildSummaryTerminalTable(filteredData) {
+    if (!filteredData || filteredData.length === 0) {
+        summaryTerminalWrap.innerHTML = '<div class="empty-message">Нет данных для отображения</div>';
+        if (!summaryVisibleTerminal) summaryTerminalWrap.classList.add('hidden');
+        return;
+    }
+    const dateSet = new Set(filteredData.map(d => d.unloadDate).filter(d => d));
+    const sortedDates = Array.from(dateSet).sort();
+    if (sortedDates.length === 0) {
+        summaryTerminalWrap.innerHTML = '<div class="empty-message">Нет корректных дат выгрузки</div>';
+        if (!summaryVisibleTerminal) summaryTerminalWrap.classList.add('hidden');
+        return;
+    }
+    const companiesMap = new Map();
+    filteredData.forEach(item => {
+        const company = item.company || 'Без компании';
+        if (!companiesMap.has(company)) companiesMap.set(company, {});
+        const row = companiesMap.get(company);
+        if (item.unloadDate) row[item.unloadDate] = (row[item.unloadDate] || 0) + 1;
+    });
+    const sortedCompanies = Array.from(companiesMap.keys()).sort();
+    let html = `<table class="date-table summary-terminal-table"><thead>
+        <tr><th rowspan="2" class="col-company">Компания</th>
+        <th colspan="${sortedDates.length + 1}" class="date-group-header">Дата выгрузки КНТ на терминале</th></tr><tr>`;
+    sortedDates.forEach(date => {
+        const parts = date.split('-');
+        const formatted = parts.length === 3 ? `${parts[2]}.${parts[1]}` : date;
+        html += `<th class="date-header col-date">${formatted}</th>`;
+    });
+    html += `<th class="col-total">Итого</th></tr></thead><tbody>`;
+    let grandTotal = 0;
+    sortedCompanies.forEach(company => {
+        const row = companiesMap.get(company);
+        let total = 0;
+        html += `<tr><td class="company-col col-company">${company}</td>`;
+        sortedDates.forEach(date => {
+            const val = row[date] || 0;
+            total += val;
+
+            // Анализ статусов контейнеров в этой ячейке
+            const cellContainers = filteredData.filter(d =>
+                (d.company || 'Без компании') === company && d.unloadDate === date
+            );
+            const analysis = analyzeCellPayment(cellContainers);
+
+            let cellClass = 'col-date';
+            if (analysis.isPaid) cellClass += ' paid-cell';
+            else if (analysis.isFuture) cellClass += ' future-cell';
+
+            let titleAttr = '';
+            if (analysis.tooltip) {
+                const escaped = analysis.tooltip.replace(/"/g, '&quot;');
+                titleAttr = ` title="${escaped}"`;
+            }
+
+            html += `<td class="${cellClass}"${titleAttr}>${val}</td>`;
+        });
+        grandTotal += total;
+        html += `<td class="col-total">${total}</td></tr>`;
+    });
+    html += `<tr class="total-row"><td class="col-company"><strong>Всего</strong></td>`;
+    let totalRowCostSum = 0;
+    sortedDates.forEach(date => {
+        let sum = 0;
+        companiesMap.forEach(row => { sum += row[date] || 0; });
+        const dayContainers = filteredData.filter(d => d.unloadDate === date);
+        let costSum = 0; let hasCost = false;
+        dayContainers.forEach(d => {
+            const c = calcStorageCost(d.carrier, d.terminal, d.unloadDate);
+            if (c !== null && c > 0) { costSum += c; hasCost = true; }
+        });
+        if (hasCost && costSum > 0) {
+            totalRowCostSum += costSum;
+            html += `<td class="col-date"><strong>${sum}</strong> <span class="storage-cost">(${Math.round(costSum)})</span></td>`;
+        } else {
+            html += `<td class="col-date"><strong>${sum}</strong></td>`;
+        }
+    });
+    if (totalRowCostSum > 0) {
+        html += `<td class="col-total"><strong>${grandTotal}</strong> <span class="storage-cost">(${Math.round(totalRowCostSum)})</span></td></tr></tbody></table>`;
+    } else {
+        html += `<td class="col-total"><strong>${grandTotal}</strong></td></tr></tbody></table>`;
+    }
+    summaryTerminalWrap.innerHTML = html;
+    if (!summaryVisibleTerminal) summaryTerminalWrap.classList.add('hidden');
+    else summaryTerminalWrap.classList.remove('hidden');
+}
+
+/* ============================================================
+   СВОДНАЯ (разгрузка)
+   ============================================================ */
+function buildSummaryUnloadTable(filteredData) {
+    if (!filteredData || filteredData.length === 0) {
+        summaryUnloadWrap.innerHTML = '<div class="empty-message">Нет данных для отображения</div>';
+        if (!summaryVisibleUnload) summaryUnloadWrap.classList.add('hidden');
+        return;
+    }
+    const dateSet = new Set(filteredData.map(d => d.unloadTime).filter(d => d));
+    const sortedDates = Array.from(dateSet).sort();
+    if (sortedDates.length === 0) {
+        summaryUnloadWrap.innerHTML = '<div class="empty-message">Нет корректных дат разгрузки</div>';
+        if (!summaryVisibleUnload) summaryUnloadWrap.classList.add('hidden');
+        return;
+    }
+    const companiesMap = new Map();
+    filteredData.forEach(item => {
+        const company = item.company || 'Без компании';
+        if (!companiesMap.has(company)) companiesMap.set(company, {});
+        const row = companiesMap.get(company);
+        if (item.unloadTime) row[item.unloadTime] = (row[item.unloadTime] || 0) + 1;
+    });
+    const sortedCompanies = Array.from(companiesMap.keys()).sort();
+    let html = `<table class="date-table summary-terminal-table"><thead>
+        <tr><th rowspan="2" class="col-company">Компания</th>
+        <th colspan="${sortedDates.length + 1}" class="date-group-header">Дата разгрузки КНТ на РЦ</th></tr><tr>`;
+    sortedDates.forEach(date => {
+        const parts = date.split('-');
+        const formatted = parts.length === 3 ? `${parts[2]}.${parts[1]}` : date;
+        html += `<th class="date-header col-date">${formatted}</th>`;
+    });
+    html += `<th class="col-total">Итого</th></tr></thead><tbody>`;
+    let grandTotal = 0;
+    sortedCompanies.forEach(company => {
+        const row = companiesMap.get(company);
+        let total = 0;
+        html += `<tr><td class="company-col col-company">${company}</td>`;
+        sortedDates.forEach(date => {
+            const val = row[date] || 0;
+            total += val;
+            html += `<td class="col-date">${val}</td>`;
+        });
+        grandTotal += total;
+        html += `<td class="col-total">${total}</td></tr>`;
+    });
+    html += `<tr class="total-row"><td class="col-company"><strong>Всего</strong></td>`;
+    sortedDates.forEach(date => {
+        let sum = 0;
+        companiesMap.forEach(row => { sum += row[date] || 0; });
+        html += `<td class="col-date"><strong>${sum}</strong></td>`;
+    });
+    html += `<td class="col-total"><strong>${grandTotal}</strong></td></tr></tbody></table>`;
+    summaryUnloadWrap.innerHTML = html;
+    if (!summaryVisibleUnload) summaryUnloadWrap.classList.add('hidden');
+    else summaryUnloadWrap.classList.remove('hidden');
+}
+
+/* ============================================================
+   СВОДНАЯ (КНТ в пути)
+   ============================================================ */
+function buildSummaryInTransitTable() {
+    if (!inTransitFileLoaded) {
+        summaryInTransitWrap.innerHTML = '<div class="empty-message">Загрузите файл «КНТ в пути» для отображения данных</div>';
+        if (!summaryVisibleInTransit) summaryInTransitWrap.classList.add('hidden');
+        return;
+    }
+    const companies = inTransitSummary.companies || [];
+    const dates = inTransitSummary.dates || [];
+    const map = inTransitSummary.map;
+
+    if (companies.length === 0 || dates.length === 0) {
+        summaryInTransitWrap.innerHTML = '<div class="empty-message">Нет данных для отображения</div>';
+        if (!summaryVisibleInTransit) summaryInTransitWrap.classList.add('hidden');
+        return;
+    }
+
+    let html = `<table class="date-table summary-terminal-table"><thead>
+        <tr><th rowspan="2" class="col-company">Компания</th>
+        <th colspan="${dates.length + 1}" class="date-group-header">Планируемая дата разгрузки на терминал</th></tr><tr>`;
+    dates.forEach(date => {
+        const parts = date.split('-');
+        const formatted = parts.length === 3 ? `${parts[2]}.${parts[1]}` : date;
+        html += `<th class="date-header col-date">${formatted}</th>`;
+    });
+    html += `<th class="col-total">Итого</th></tr></thead><tbody>`;
+
+    let grandTotal = 0;
+    const colTotals = new Array(dates.length).fill(0);
+
+    companies.forEach(company => {
+        let rowTotal = 0;
+        html += `<tr><td class="company-col col-company">${company}</td>`;
+        dates.forEach((date, idx) => {
+            const v = map.get(company + '|' + date) || 0;
+            rowTotal += v;
+            colTotals[idx] += v;
+            html += `<td class="col-date">${fmtCount(v)}</td>`;
+        });
+        grandTotal += rowTotal;
+        html += `<td class="col-total">${fmtCount(rowTotal)}</td></tr>`;
+    });
+
+    html += `<tr class="total-row"><td class="col-company"><strong>Всего</strong></td>`;
+    colTotals.forEach(v => {
+        html += `<td class="col-date"><strong>${fmtCount(v)}</strong></td>`;
+    });
+    html += `<td class="col-total"><strong>${fmtCount(grandTotal)}</strong></td></tr>`;
+
+    html += `</tbody></table>`;
+    summaryInTransitWrap.innerHTML = html;
+    if (!summaryVisibleInTransit) summaryInTransitWrap.classList.add('hidden');
+    else summaryInTransitWrap.classList.remove('hidden');
+}
+
+/* ============================================================
+   ДЕТАЛИЗАЦИЯ (терминал) — с жёлтой подсветкой будущих платных
+   ============================================================ */
+function renderDetailTerminal() {
+    const futureOnlyStatuses = ['подтвержден', 'на утверждении'];
+    const today = getTodayZero();
+
+    const activeRows = detailRows.filter(row => {
+        const status = (row.status || '').trim().toLowerCase();
+
+        if (futureOnlyStatuses.includes(status)) {
+            if (!row.unloadTime) return true;
+            const unloadDate = new Date(row.unloadTime);
+            if (isNaN(unloadDate.getTime())) return true;
+            unloadDate.setHours(0, 0, 0, 0);
+            return unloadDate > today;
+        }
+
+        return true;
+    });
+    const filtered = activeRows.filter(row => {
+        const companyMatch = selectedCompanyTerminal.length === 0 || selectedCompanyTerminal.includes(row.company);
+        const containerMatch = selectedContainerTerminal.length === 0 || selectedContainerTerminal.includes(row.container);
+        const carrierMatch = selectedCarrierTerminal.length === 0 || selectedCarrierTerminal.includes(row.carrier);
+        const priorityMatch = selectedPriorityTerminal.length === 0 || selectedPriorityTerminal.includes(String(row.priority));
+        const usefulnessMatch = selectedUsefulnessTerminal.length === 0 || selectedUsefulnessTerminal.includes(String(row.usefulness));
+        return companyMatch && containerMatch && carrierMatch && priorityMatch && usefulnessMatch;
+    });
+    buildSummaryTerminalTable(filtered);
+    if (!filtered || filtered.length === 0) {
+        detailWrap.innerHTML = '<div class="empty-message">Нет контейнеров для отображения</div>';
+        if (!detailVisibleTerminal) detailWrap.classList.add('hidden');
+        return;
+    }
+    const dateSet = new Set(filtered.map(d => d.unloadDate).filter(d => d));
+    const sortedDates = Array.from(dateSet).sort();
+    if (sortedDates.length === 0) {
+        detailWrap.innerHTML = '<div class="empty-message">Нет корректных дат выгрузки</div>';
+        if (!detailVisibleTerminal) detailWrap.classList.add('hidden');
+        return;
+    }
+    let displayRows = filtered;
+    if (usefulnessSortDescTerminal) {
+        displayRows = filtered.slice().sort((a, b) => {
+            const av = Number(a.usefulness); const bv = Number(b.usefulness);
+            const na = isNaN(av) ? -Infinity : av; const nb = isNaN(bv) ? -Infinity : bv;
+            return nb - na;
+        });
+    }
+    const uniqueCompanies = getUniqueValues(activeRows, 'company');
+    const uniqueContainers = getUniqueValues(activeRows, 'container');
+    const uniqueCarriers = getUniqueValues(activeRows, 'carrier');
+    const uniquePriorities = getUniqueValues(activeRows, 'priority');
+    const uniqueUsefulness = getUniqueNumericValues(activeRows, 'usefulness');
+    const sortArrow = usefulnessSortDescTerminal ? '↓' : '↕';
+    let html = `<table class="date-table"><thead><tr>
+        <th rowspan="2" id="header-company-terminal" class="col-company">
+            <span class="th-inner"><span class="th-text">Компания</span><span class="filter-indicator">▼</span></span>
+            ${buildFilterDropdown('company-terminal', uniqueCompanies, selectedCompanyTerminal)}
+        </th>
+        <th rowspan="2" id="header-container-terminal" class="col-container">
+            <span class="th-inner"><span class="th-text">Номер<br>контейнера</span><span class="filter-indicator">▼</span></span>
+            ${buildFilterDropdown('container-terminal', uniqueContainers, selectedContainerTerminal)}
+        </th>
+        <th rowspan="2" id="header-carrier-terminal" class="col-carrier">
+            <span class="th-inner"><span class="th-text">Перевозчик</span><span class="filter-indicator">▼</span></span>
+            ${buildFilterDropdown('carrier-terminal', uniqueCarriers, selectedCarrierTerminal)}
+        </th>
+        <th rowspan="2" id="header-priority-terminal" class="col-priority">
+            <span class="th-inner"><span class="th-text">Приоритет</span><span class="filter-indicator">▼</span></span>
+            ${buildFilterDropdown('priority-terminal', uniquePriorities, selectedPriorityTerminal)}
+        </th>
+        <th rowspan="2" id="header-usefulness-terminal" class="col-usefulness">
+            <span class="th-inner">
+                <span class="th-text">Полез-ть</span>
+                <span class="sort-usefulness" title="Сортировать по убыванию">${sortArrow}</span>
+                <span class="filter-indicator">▼</span>
+            </span>
+            ${buildFilterDropdown('usefulness-terminal', uniqueUsefulness, selectedUsefulnessTerminal)}
+        </th>
+        <th colspan="${sortedDates.length}" class="date-group-header">Дата выгрузки КНТ на терминале</th>
+    </tr><tr>`;
+    sortedDates.forEach(date => {
+        const parts = date.split('-');
+        const formatted = parts.length === 3 ? `${parts[2]}.${parts[1]}` : date;
+        html += `<th class="date-header col-date">${formatted}</th>`;
+    });
+    html += `</tr></thead><tbody>`;
+    displayRows.forEach(item => {
+        const company = item.company || '';
+        let badgeClass = '';
+        if (company.includes(',')) badgeClass = 'multi';
+        else if (company.includes('Марникс')) badgeClass = 'marnix';
+        else if (company.includes('Новотех')) badgeClass = 'novotech';
+        else if (company.includes('Инстротех')) badgeClass = 'instro';
+        else if (company.includes('Креусс')) badgeClass = 'kreuss';
+        else if (company.includes('Каскад')) badgeClass = 'kaskad';
+        else if (company.includes('Техномир')) badgeClass = 'tehnomir';
+        const priorityDisplay = (item.priority === undefined || item.priority === null) ? '' : item.priority;
+        html += `<tr>
+            <td class="company-col col-company"><span class="badge-company ${badgeClass}">${company}</span></td>
+            <td class="container-col col-container">${item.container}</td>
+            <td class="carrier-col col-carrier">${item.carrier || ''}</td>
+            <td class="priority-col col-priority">${priorityDisplay}</td>
+            <td class="usefulness-col col-usefulness">${item.usefulness !== undefined && item.usefulness !== null ? item.usefulness : ''}</td>`;
+        const storageCost = calcStorageCost(item.carrier, item.terminal, item.unloadDate);
+
+        const statusLower = (item.status || '').trim().toLowerCase();
+        let dotHtml = '';
+        if (statusLower === 'подтвержден') {
+            const dStr = formatTooltipDate(item.unloadTime);
+            const title = dStr
+                ? `Подтвержден на выгрузку: ${dStr}`
+                : 'Подтвержден на выгрузку';
+            dotHtml = ` <span class="status-dot confirmed" title="${title}"></span>`;
+        } else if (statusLower === 'на утверждении') {
+            const dStr = formatTooltipDate(item.unloadTime);
+            const title = dStr
+                ? `Ожидает подтверждения на выгрузку: ${dStr}`
+                : 'Ожидает подтверждения на выгрузку';
+            dotHtml = ` <span class="status-dot pending" title="${title}"></span>`;
+        }
+
+        sortedDates.forEach(date => {
+            if (date === item.unloadDate) {
+                let cellInner;
+                let cellClass = 'col-date';
+                let cellTitle = '';
+                if (storageCost === null) {
+                    cellInner = `1 <span class="storage-cost no-data">(нет данных)</span>`;
+                } else if (storageCost > 0) {
+                    cellInner = `1 <span class="storage-cost">(${Math.round(storageCost)})</span>`;
+                } else {
+                    // Сейчас бесплатный — проверяем, станет ли платным в ближайшие 3 дня
+                    const analysis = analyzeContainerPayment(item);
+                    if (analysis.status === 'future') {
+                        cellClass = 'col-date future-cell';
+                        const dStr = formatShortDate(analysis.futureDate);
+                        cellTitle = ` title="Станет платным - 1 ${dStr} (${Math.round(analysis.futureCost)})"`;
+                    }
+                    cellInner = `1`;
+                }
+                html += `<td class="${cellClass}"${cellTitle}>${cellInner}${dotHtml}</td>`;
+            } else html += `<td class="col-date"></td>`;
+        });
+        html += `</tr>`;
+    });
+    html += `<tr class="total-row">
+        <td class="col-company">Всего</td>
+        <td class="col-container"></td>
+        <td class="col-carrier"></td>
+        <td class="col-priority">-</td>
+        <td class="col-usefulness"></td>`;
+    sortedDates.forEach(date => {
+        const dayContainers = filtered.filter(d => d.unloadDate === date);
+        const count = dayContainers.length;
+        let sum = 0; let hasCost = false;
+        dayContainers.forEach(d => {
+            const c = calcStorageCost(d.carrier, d.terminal, d.unloadDate);
+            if (c !== null && c > 0) { sum += c; hasCost = true; }
+        });
+        if (hasCost && sum > 0) html += `<td class="col-date">${count} <span class="storage-cost">(${Math.round(sum)})</span></td>`;
+        else html += `<td class="col-date">${count}</td>`;
+    });
+    html += `</tr></tbody></table>`;
+    detailWrap.innerHTML = html;
+    if (!detailVisibleTerminal) detailWrap.classList.add('hidden');
+    else detailWrap.classList.remove('hidden');
+    if (openedDropdownIdTerminal) {
+        const dd = document.getElementById(openedDropdownIdTerminal);
+        if (dd) { dd.classList.add('open'); adjustDropdownPosition(dd); }
+    }
+    attachFilterEventsTerminal();
+}
+
+/* ============================================================
+   ДЕТАЛИЗАЦИЯ (разгрузка)
+   ============================================================ */
+function renderDetailUnload() {
+    const includedStatuses = ['подтвержден', 'на утверждении'];
+    const activeRows = detailRows.filter(row => {
+        const status = (row.status || '').trim().toLowerCase();
+        return includedStatuses.includes(status);
+    });
+    const filtered = activeRows.filter(row => {
+        const companyMatch = selectedCompanyUnload.length === 0 || selectedCompanyUnload.includes(row.company);
+        const containerMatch = selectedContainerUnload.length === 0 || selectedContainerUnload.includes(row.container);
+        const carrierMatch = selectedCarrierUnload.length === 0 || selectedCarrierUnload.includes(row.carrier);
+        const priorityMatch = selectedPriorityUnload.length === 0 || selectedPriorityUnload.includes(String(row.priority));
+        return companyMatch && containerMatch && carrierMatch && priorityMatch;
+    });
+    buildSummaryUnloadTable(filtered);
+    if (!filtered || filtered.length === 0) {
+        detailUnloadWrap.innerHTML = '<div class="empty-message">Нет контейнеров для отображения</div>';
+        if (!detailVisibleUnload) detailUnloadWrap.classList.add('hidden');
+        return;
+    }
+    const dateSet = new Set(filtered.map(d => d.unloadTime).filter(d => d));
+    const sortedDates = Array.from(dateSet).sort();
+    if (sortedDates.length === 0) {
+        detailUnloadWrap.innerHTML = '<div class="empty-message">Нет корректных дат разгрузки</div>';
+        if (!detailVisibleUnload) detailUnloadWrap.classList.add('hidden');
+        return;
+    }
+    const uniqueCompanies = getUniqueValues(activeRows, 'company');
+    const uniqueContainers = getUniqueValues(activeRows, 'container');
+    const uniqueCarriers = getUniqueValues(activeRows, 'carrier');
+    const uniquePriorities = getUniqueValues(activeRows, 'priority');
+    let html = `<table class="date-table"><thead><tr>
+        <th rowspan="2" id="header-company-unload" class="col-company">
+            <span class="th-inner"><span class="th-text">Компания</span><span class="filter-indicator">▼</span></span>
+            ${buildFilterDropdown('company-unload', uniqueCompanies, selectedCompanyUnload)}
+        </th>
+        <th rowspan="2" id="header-container-unload" class="col-container">
+            <span class="th-inner"><span class="th-text">Номер<br>контейнера</span><span class="filter-indicator">▼</span></span>
+            ${buildFilterDropdown('container-unload', uniqueContainers, selectedContainerUnload)}
+        </th>
+        <th rowspan="2" id="header-carrier-unload" class="col-carrier">
+            <span class="th-inner"><span class="th-text">Перевозчик</span><span class="filter-indicator">▼</span></span>
+            ${buildFilterDropdown('carrier-unload', uniqueCarriers, selectedCarrierUnload)}
+        </th>
+        <th rowspan="2" id="header-priority-unload" class="col-priority">
+            <span class="th-inner"><span class="th-text">Приоритет</span><span class="filter-indicator">▼</span></span>
+            ${buildFilterDropdown('priority-unload', uniquePriorities, selectedPriorityUnload)}
+        </th>
+        <th colspan="${sortedDates.length}" class="date-group-header">Дата разгрузки КНТ на РЦ</th>
+    </tr><tr>`;
+    sortedDates.forEach(date => {
+        const parts = date.split('-');
+        const formatted = parts.length === 3 ? `${parts[2]}.${parts[1]}` : date;
+        html += `<th class="date-header col-date">${formatted}</th>`;
+    });
+    html += `</tr></thead><tbody>`;
+    filtered.forEach(item => {
+        const company = item.company || '';
+        let badgeClass = '';
+        if (company.includes(',')) badgeClass = 'multi';
+        else if (company.includes('Марникс')) badgeClass = 'marnix';
+        else if (company.includes('Новотех')) badgeClass = 'novotech';
+        else if (company.includes('Инстротех')) badgeClass = 'instro';
+        else if (company.includes('Креусс')) badgeClass = 'kreuss';
+        else if (company.includes('Каскад')) badgeClass = 'kaskad';
+        else if (company.includes('Техномир')) badgeClass = 'tehnomir';
+        const priorityDisplay = (item.priority === undefined || item.priority === null) ? '' : item.priority;
+        html += `<tr>
+            <td class="company-col col-company"><span class="badge-company ${badgeClass}">${company}</span></td>
+            <td class="container-col col-container">${item.container}</td>
+            <td class="carrier-col col-carrier">${item.carrier || ''}</td>
+            <td class="priority-col col-priority">${priorityDisplay}</td>`;
+
+        const statusLower = (item.status || '').trim().toLowerCase();
+        let dotHtml = '';
+        if (statusLower === 'подтвержден') {
+            const dStr = formatTooltipDate(item.unloadTime);
+            const title = dStr
+                ? `Подтвержден на выгрузку: ${dStr}`
+                : 'Подтвержден на выгрузку';
+            dotHtml = ` <span class="status-dot confirmed" title="${title}"></span>`;
+        } else if (statusLower === 'на утверждении') {
+            const dStr = formatTooltipDate(item.unloadTime);
+            const title = dStr
+                ? `Ожидает подтверждения на выгрузку: ${dStr}`
+                : 'Ожидает подтверждения на выгрузку';
+            dotHtml = ` <span class="status-dot pending" title="${title}"></span>`;
+        }
+
+        sortedDates.forEach(date => {
+            if (date === item.unloadTime) html += `<td class="col-date">1${dotHtml}</td>`;
+            else html += `<td class="col-date"></td>`;
+        });
+        html += `</tr>`;
+    });
+    html += `<tr class="total-row">
+        <td class="col-company">Всего</td>
+        <td class="col-container"></td>
+        <td class="col-carrier"></td>
+        <td class="col-priority">-</td>`;
+    sortedDates.forEach(date => {
+        const count = filtered.filter(d => d.unloadTime === date).length;
+        html += `<td class="col-date">${count}</td>`;
+    });
+    html += `</tr></tbody></table>`;
+    detailUnloadWrap.innerHTML = html;
+    if (!detailVisibleUnload) detailUnloadWrap.classList.add('hidden');
+    else detailUnloadWrap.classList.remove('hidden');
+    if (openedDropdownIdUnload) {
+        const dd = document.getElementById(openedDropdownIdUnload);
+        if (dd) { dd.classList.add('open'); adjustDropdownPosition(dd); }
+    }
+    attachFilterEventsUnload();
+}
+
+/* ============================================================
+   ДЕТАЛИЗАЦИЯ (КНТ в пути)
+   ============================================================ */
+function renderDetailInTransit() {
+    if (!detailInTransitWrap) return;
+    if (!inTransitFileLoaded) {
+        detailInTransitWrap.innerHTML = '<div class="empty-message">Загрузите файл «КНТ в пути» для отображения данных</div>';
+        return;
+    }
+    const companies = inTransitSummary.companies || [];
+    const dates = inTransitSummary.dates || [];
+    const map = inTransitSummary.map;
+
+    if (companies.length === 0 || dates.length === 0) {
+        detailInTransitWrap.innerHTML = '<div class="empty-message">Нет данных для отображения</div>';
+        return;
+    }
+
+    const filteredCompanies = selectedCompanyInTransit.length === 0
+        ? companies.slice()
+        : companies.filter(c => selectedCompanyInTransit.includes(c));
+
+    if (filteredCompanies.length === 0) {
+        detailInTransitWrap.innerHTML = '<div class="empty-message">Нет контейнеров для отображения</div>';
+        return;
+    }
+
+    const uniqueCompanies = companies.slice().sort();
+
+    let html = `<table class="date-table"><thead><tr>
+        <th rowspan="2" id="header-company-intransit" class="col-company">
+            <span class="th-inner"><span class="th-text">Компания</span><span class="filter-indicator">▼</span></span>
+            ${buildFilterDropdown('company-intransit', uniqueCompanies, selectedCompanyInTransit)}
+        </th>
+        <th colspan="${dates.length}" class="date-group-header">Планируемая дата разгрузки на терминал</th>
+    </tr><tr>`;
+    dates.forEach(date => {
+        const parts = date.split('-');
+        const formatted = parts.length === 3 ? `${parts[2]}.${parts[1]}` : date;
+        html += `<th class="date-header col-date">${formatted}</th>`;
+    });
+    html += `</tr></thead><tbody>`;
+
+    filteredCompanies.forEach(company => {
+        html += `<tr><td class="company-col col-company">${company}</td>`;
+        dates.forEach(date => {
+            const v = map.get(company + '|' + date) || 0;
+            html += `<td class="col-date">${v > 0 ? fmtCount(v) : ''}</td>`;
+        });
+        html += `</tr>`;
+    });
+
+    html += `</tbody></table>`;
+    detailInTransitWrap.innerHTML = html;
+    if (openedDropdownIdInTransit) {
+        const dd = document.getElementById(openedDropdownIdInTransit);
+        if (dd) { dd.classList.add('open'); adjustDropdownPosition(dd); }
+    }
+    attachFilterEventsInTransit();
+}
+
+/* ============================================================
+   ПРИВЯЗКА СОБЫТИЙ ФИЛЬТРОВ
+   ============================================================ */
+function attachFilterEventsTerminal() {
+    detailWrap.querySelectorAll('.date-table th[id^="header-"]').forEach(th => {
+        th.removeEventListener('click', th._clickHandlerTerminal);
+        const handler = function(e) {
+            if (e.target.closest('.filter-dropdown')) return;
+            if (e.target.closest('.sort-usefulness')) return;
+            const dropdown = this.querySelector('.filter-dropdown'); if (!dropdown) return;
+            e.stopPropagation();
+            const isOpen = dropdown.classList.contains('open');
+            if (isOpen) {
+                dropdown.classList.remove('open');
+                dropdown.style.top = ''; dropdown.style.left = ''; dropdown.style.maxHeight = ''; dropdown.style.width = '';
+                openedDropdownIdTerminal = null;
+            } else {
+                closeAllDropdowns(dropdown.id);
+                dropdown.classList.add('open');
+                openedDropdownIdTerminal = dropdown.id;
+                adjustDropdownPosition(dropdown);
+            }
+        };
+        th._clickHandlerTerminal = handler; th.addEventListener('click', handler);
+    });
+    const sortBtn = detailWrap.querySelector('.sort-usefulness');
+    if (sortBtn) {
+        sortBtn.removeEventListener('click', sortBtn._sortHandlerTerminal);
+        sortBtn._sortHandlerTerminal = function(e) {
+            e.stopPropagation();
+            usefulnessSortDescTerminal = !usefulnessSortDescTerminal;
+            renderDetailTerminal();
+        };
+        sortBtn.addEventListener('click', sortBtn._sortHandlerTerminal);
+    }
+    document.removeEventListener('click', document._closeDropdownHandlerTerminal);
+    document._closeDropdownHandlerTerminal = function(e) {
+        if (!e.target.closest('.date-table th')) {
+            document.querySelectorAll('.filter-dropdown').forEach(dd => {
+                dd.classList.remove('open');
+                dd.style.top = ''; dd.style.left = ''; dd.style.maxHeight = ''; dd.style.width = '';
+            });
+            openedDropdownIdTerminal = null;
+        }
+    };
+    document.addEventListener('click', document._closeDropdownHandlerTerminal);
+    detailWrap.querySelectorAll('.filter-dropdown .search-input').forEach(input => {
+        input.removeEventListener('input', input._inputHandlerTerminal);
+        input._inputHandlerTerminal = function() {
+            const searchText = this.value.toLowerCase();
+            const dropdown = this.closest('.filter-dropdown');
+            dropdown.querySelectorAll('.option-list label').forEach(label => {
+                const text = label.textContent.toLowerCase();
+                label.style.display = text.includes(searchText) ? '' : 'none';
+            });
+        };
+        input.addEventListener('input', input._inputHandlerTerminal);
+    });
+    detailWrap.querySelectorAll('.filter-dropdown input[type="checkbox"]').forEach(cb => {
+        cb.removeEventListener('change', cb._changeHandlerTerminal);
+        cb._changeHandlerTerminal = function() {
+            const dropdown = this.closest('.filter-dropdown');
+            const filterKey = dropdown.id.replace('dropdown-', '');
+            const checked = dropdown.querySelectorAll('input[type="checkbox"]:checked');
+            const values = Array.from(checked).map(el => el.value);
+            if (filterKey === 'company-terminal') selectedCompanyTerminal = values;
+            else if (filterKey === 'container-terminal') selectedContainerTerminal = values;
+            else if (filterKey === 'carrier-terminal') selectedCarrierTerminal = values;
+            else if (filterKey === 'priority-terminal') selectedPriorityTerminal = values;
+            else if (filterKey === 'usefulness-terminal') selectedUsefulnessTerminal = values;
+            renderDetailTerminal();
+        };
+        cb.addEventListener('change', cb._changeHandlerTerminal);
+    });
+    detailWrap.querySelectorAll('.filter-actions button').forEach(btn => {
+        btn.removeEventListener('click', btn._clickHandlerTerminal);
+        btn._clickHandlerTerminal = function(e) {
+            e.stopPropagation();
+            const filterKey = this.dataset.filter;
+            const dropdown = document.getElementById('dropdown-' + filterKey);
+            if (!dropdown) return;
+            if (this.classList.contains('select-all')) {
+                const visibleLabels = dropdown.querySelectorAll('.option-list label[style*="display: block"], .option-list label:not([style*="display: none"])');
+                visibleLabels.forEach(label => { const cb = label.querySelector('input[type="checkbox"]'); if (cb) cb.checked = true; });
+            } else if (this.classList.contains('clear-all')) {
+                dropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            }
+            const checked = dropdown.querySelectorAll('input[type="checkbox"]:checked');
+            const values = Array.from(checked).map(el => el.value);
+            if (filterKey === 'company-terminal') selectedCompanyTerminal = values;
+            else if (filterKey === 'container-terminal') selectedContainerTerminal = values;
+            else if (filterKey === 'carrier-terminal') selectedCarrierTerminal = values;
+            else if (filterKey === 'priority-terminal') selectedPriorityTerminal = values;
+            else if (filterKey === 'usefulness-terminal') selectedUsefulnessTerminal = values;
+            renderDetailTerminal();
+        };
+        btn.addEventListener('click', btn._clickHandlerTerminal);
+    });
+}
+
+function attachFilterEventsUnload() {
+    detailUnloadWrap.querySelectorAll('.date-table th[id^="header-"]').forEach(th => {
+        th.removeEventListener('click', th._clickHandlerUnload);
+        const handler = function(e) {
+            if (e.target.closest('.filter-dropdown')) return;
+            const dropdown = this.querySelector('.filter-dropdown'); if (!dropdown) return;
+            e.stopPropagation();
+            const isOpen = dropdown.classList.contains('open');
+            if (isOpen) {
+                dropdown.classList.remove('open');
+                dropdown.style.top = ''; dropdown.style.left = ''; dropdown.style.maxHeight = ''; dropdown.style.width = '';
+                openedDropdownIdUnload = null;
+            } else {
+                closeAllDropdowns(dropdown.id);
+                dropdown.classList.add('open');
+                openedDropdownIdUnload = dropdown.id;
+                adjustDropdownPosition(dropdown);
+            }
+        };
+        th._clickHandlerUnload = handler; th.addEventListener('click', handler);
+    });
+    document.removeEventListener('click', document._closeDropdownHandlerUnload);
+    document._closeDropdownHandlerUnload = function(e) {
+        if (!e.target.closest('.date-table th')) {
+            document.querySelectorAll('.filter-dropdown').forEach(dd => {
+                dd.classList.remove('open');
+                dd.style.top = ''; dd.style.left = ''; dd.style.maxHeight = ''; dd.style.width = '';
+            });
+            openedDropdownIdUnload = null;
+        }
+    };
+    document.addEventListener('click', document._closeDropdownHandlerUnload);
+    detailUnloadWrap.querySelectorAll('.filter-dropdown .search-input').forEach(input => {
+        input.removeEventListener('input', input._inputHandlerUnload);
+        input._inputHandlerUnload = function() {
+            const searchText = this.value.toLowerCase();
+            const dropdown = this.closest('.filter-dropdown');
+            dropdown.querySelectorAll('.option-list label').forEach(label => {
+                const text = label.textContent.toLowerCase();
+                label.style.display = text.includes(searchText) ? '' : 'none';
+            });
+        };
+        input.addEventListener('input', input._inputHandlerUnload);
+    });
+    detailUnloadWrap.querySelectorAll('.filter-dropdown input[type="checkbox"]').forEach(cb => {
+        cb.removeEventListener('change', cb._changeHandlerUnload);
+        cb._changeHandlerUnload = function() {
+            const dropdown = this.closest('.filter-dropdown');
+            const filterKey = dropdown.id.replace('dropdown-', '');
+            const checked = dropdown.querySelectorAll('input[type="checkbox"]:checked');
+            const values = Array.from(checked).map(el => el.value);
+            if (filterKey === 'company-unload') selectedCompanyUnload = values;
+            else if (filterKey === 'container-unload') selectedContainerUnload = values;
+            else if (filterKey === 'carrier-unload') selectedCarrierUnload = values;
+            else if (filterKey === 'priority-unload') selectedPriorityUnload = values;
+            renderDetailUnload();
+        };
+        cb.addEventListener('change', cb._changeHandlerUnload);
+    });
+    detailUnloadWrap.querySelectorAll('.filter-actions button').forEach(btn => {
+        btn.removeEventListener('click', btn._clickHandlerUnload);
+        btn._clickHandlerUnload = function(e) {
+            e.stopPropagation();
+            const filterKey = this.dataset.filter;
+            const dropdown = document.getElementById('dropdown-' + filterKey); if (!dropdown) return;
+            if (this.classList.contains('select-all')) {
+                const visibleLabels = dropdown.querySelectorAll('.option-list label[style*="display: block"], .option-list label:not([style*="display: none"])');
+                visibleLabels.forEach(label => { const cb = label.querySelector('input[type="checkbox"]'); if (cb) cb.checked = true; });
+            } else if (this.classList.contains('clear-all')) {
+                dropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            }
+            const checked = dropdown.querySelectorAll('input[type="checkbox"]:checked');
+            const values = Array.from(checked).map(el => el.value);
+            if (filterKey === 'company-unload') selectedCompanyUnload = values;
+            else if (filterKey === 'container-unload') selectedContainerUnload = values;
+            else if (filterKey === 'carrier-unload') selectedCarrierUnload = values;
+            else if (filterKey === 'priority-unload') selectedPriorityUnload = values;
+            renderDetailUnload();
+        };
+        btn.addEventListener('click', btn._clickHandlerUnload);
+    });
+}
+
+function attachFilterEventsInTransit() {
+    if (!detailInTransitWrap) return;
+    detailInTransitWrap.querySelectorAll('.date-table th[id^="header-"]').forEach(th => {
+        th.removeEventListener('click', th._clickHandlerInTransit);
+        const handler = function(e) {
+            if (e.target.closest('.filter-dropdown')) return;
+            const dropdown = this.querySelector('.filter-dropdown'); if (!dropdown) return;
+            e.stopPropagation();
+            const isOpen = dropdown.classList.contains('open');
+            if (isOpen) {
+                dropdown.classList.remove('open');
+                dropdown.style.top = ''; dropdown.style.left = ''; dropdown.style.maxHeight = ''; dropdown.style.width = '';
+                openedDropdownIdInTransit = null;
+            } else {
+                closeAllDropdowns(dropdown.id);
+                dropdown.classList.add('open');
+                openedDropdownIdInTransit = dropdown.id;
+                adjustDropdownPosition(dropdown);
+            }
+        };
+        th._clickHandlerInTransit = handler; th.addEventListener('click', handler);
+    });
+    document.removeEventListener('click', document._closeDropdownHandlerInTransit);
+    document._closeDropdownHandlerInTransit = function(e) {
+        if (!e.target.closest('.date-table th')) {
+            document.querySelectorAll('.filter-dropdown').forEach(dd => {
+                dd.classList.remove('open');
+                dd.style.top = ''; dd.style.left = ''; dd.style.maxHeight = ''; dd.style.width = '';
+            });
+            openedDropdownIdInTransit = null;
+        }
+    };
+    document.addEventListener('click', document._closeDropdownHandlerInTransit);
+    detailInTransitWrap.querySelectorAll('.filter-dropdown .search-input').forEach(input => {
+        input.removeEventListener('input', input._inputHandlerInTransit);
+        input._inputHandlerInTransit = function() {
+            const searchText = this.value.toLowerCase();
+            const dropdown = this.closest('.filter-dropdown');
+            dropdown.querySelectorAll('.option-list label').forEach(label => {
+                const text = label.textContent.toLowerCase();
+                label.style.display = text.includes(searchText) ? '' : 'none';
+            });
+        };
+        input.addEventListener('input', input._inputHandlerInTransit);
+    });
+    detailInTransitWrap.querySelectorAll('.filter-dropdown input[type="checkbox"]').forEach(cb => {
+        cb.removeEventListener('change', cb._changeHandlerInTransit);
+        cb._changeHandlerInTransit = function() {
+            const dropdown = this.closest('.filter-dropdown');
+            const filterKey = dropdown.id.replace('dropdown-', '');
+            const checked = dropdown.querySelectorAll('input[type="checkbox"]:checked');
+            const values = Array.from(checked).map(el => el.value);
+            if (filterKey === 'company-intransit') selectedCompanyInTransit = values;
+            renderDetailInTransit();
+        };
+        cb.addEventListener('change', cb._changeHandlerInTransit);
+    });
+    detailInTransitWrap.querySelectorAll('.filter-actions button').forEach(btn => {
+        btn.removeEventListener('click', btn._clickHandlerInTransit);
+        btn._clickHandlerInTransit = function(e) {
+            e.stopPropagation();
+            const filterKey = this.dataset.filter;
+            const dropdown = document.getElementById('dropdown-' + filterKey); if (!dropdown) return;
+            if (this.classList.contains('select-all')) {
+                const visibleLabels = dropdown.querySelectorAll('.option-list label[style*="display: block"], .option-list label:not([style*="display: none"])');
+                visibleLabels.forEach(label => { const cb = label.querySelector('input[type="checkbox"]'); if (cb) cb.checked = true; });
+            } else if (this.classList.contains('clear-all')) {
+                dropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            }
+            const checked = dropdown.querySelectorAll('input[type="checkbox"]:checked');
+            const values = Array.from(checked).map(el => el.value);
+            if (filterKey === 'company-intransit') selectedCompanyInTransit = values;
+            renderDetailInTransit();
+        };
+        btn.addEventListener('click', btn._clickHandlerInTransit);
+    });
+}
+
+/* ============================================================
+   ОБРАБОТКА ФАЙЛА «СПИСОК КНТ»
+   ============================================================ */
+function handleMainFile(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+                summaryRows = []; detailRows = [];
+                let summaryStart = -1, detailStart = -1;
+                for (let i = 0; i < rows.length; i++) {
+                    const row = rows[i]; if (row.length === 0) continue;
+                    const firstCell = String(row[0] || '').trim();
+                    if (firstCell === 'Под-склад' || firstCell.includes('Под-склад')) { summaryStart = i; break; }
+                }
+                for (let i = 0; i < rows.length; i++) {
+                    const row = rows[i]; if (row.length === 0) continue;
+                    const firstCell = String(row[0] || '').trim();
+                    if (firstCell === 'Номер контейнера' || firstCell.includes('Номер контейнера')) { detailStart = i; break; }
+                }
+                if (summaryStart === -1 || detailStart === -1) { reject('Не удалось найти таблицы в файле.'); return; }
+                let summaryData = [];
+                for (let i = summaryStart + 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (row.length === 0 || row.every(c => c === '' || c === null || c === undefined)) break;
+                    const firstCell = String(row[0] || '').trim();
+                    if (firstCell === 'Итого:' || firstCell.includes('Итого')) continue;
+                    if (firstCell === 'Номер контейнера' || firstCell.includes('Номер контейнера')) break;
+                    if (row.length >= 7) {
+                        summaryData.push({
+                            subWarehouse: String(row[0] || '').trim(),
+                            company: String(row[1] || '').trim(),
+                            confirmed: parseFloat(row[2]) || 0,
+                            approved: parseFloat(row[3]) || 0,
+                            cancelled: parseFloat(row[4]) || 0,
+                            unplanned: parseFloat(row[5]) || 0,
+                            total: parseFloat(row[6]) || 0
+                        });
+                    }
+                }
+                let detailData = [];
+                for (let i = detailStart + 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (row.length === 0 || row.every(c => c === '' || c === null || c === undefined)) break;
+                    if (row.length >= 15) {
+                        detailData.push({
+                            container: String(row[0] || '').trim(),
+                            company: String(row[1] || '').trim(),
+                            weight: parseFloat(row[2]) || 0,
+                            volume: parseFloat(row[3]) || 0,
+                            boxes: parseFloat(row[4]) || 0,
+                            sku: parseFloat(row[5]) || 0,
+                            unloadDate: parseExcelDate(row[6]),
+                            priority: parseNumberOrText(row[7], 0),
+                            comment: String(row[8] || '').trim(),
+                            usefulness: parseFloat(row[9]) || 0,
+                            carrier: String(row[10] || '').trim(),
+                            location: String(row[11] || '').trim(),
+                            terminal: String(row[12] || '').trim(),
+                            unloadTime: parseExcelDate(row[13]),
+                            status: String(row[14] || '').trim()
+                        });
+                    }
+                }
+                summaryRows = summaryData;
+                detailRows = detailData;
+                selectedCompanyTerminal = []; selectedContainerTerminal = [];
+                selectedCarrierTerminal = []; selectedPriorityTerminal = [];
+                selectedUsefulnessTerminal = [];
+                usefulnessSortDescTerminal = false;
+                selectedCompanyUnload = []; selectedContainerUnload = [];
+                selectedCarrierUnload = []; selectedPriorityUnload = [];
+                resolve();
+            } catch (err) { reject('Ошибка при чтении файла: ' + err.message); }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+/* ============================================================
+   ОБРАБОТКА ФАЙЛА «КНТ В ПУТИ»
+   ============================================================ */
+function parseInTransitSheet(rows) {
+    if (!rows || rows.length === 0) return null;
+
+    let headerRow = -1;
+    let bestCount = 0;
+    for (let i = 0; i < Math.min(rows.length, 10); i++) {
+        const row = rows[i];
+        if (!row || row.length < 4) continue;
+        let cnt = 0;
+        for (let j = 0; j < row.length; j++) {
+            const cell = row[j];
+            if (cell === '' || cell === null || cell === undefined) continue;
+            const s = String(cell).trim();
+            if (!s) continue;
+            const low = s.toLowerCase();
+            if (low === 'итого' || low.includes('планируемая') || low.includes('номер контейнера')) continue;
+            if (looksLikeDate(cell)) continue;
+            if (!isNaN(parseFloat(s)) && s.indexOf('.') === -1) continue;
+            cnt++;
+        }
+        if (cnt >= 3 && cnt > bestCount) {
+            bestCount = cnt;
+            headerRow = i;
+        }
+    }
+    if (headerRow === -1) return null;
+
+    const headers = rows[headerRow];
+
+    const companyColumns = [];
+    for (let j = 3; j < headers.length; j++) {
+        const raw = headers[j];
+        if (raw === '' || raw === null || raw === undefined) continue;
+        const s = String(raw).trim();
+        if (!s) continue;
+        const low = s.toLowerCase();
+        if (low === 'итого') continue;
+        if (low.includes('планируемая') || low.includes('номер контейнера')) continue;
+        if (!isNaN(parseFloat(s)) && s.indexOf('.') === -1) continue;
+        if (looksLikeDate(raw)) continue;
+        companyColumns.push({ col: j, text: s });
+    }
+    if (companyColumns.length === 0) return null;
+
+    let totalCol = -1;
+    for (let j = headers.length - 1; j >= 0; j--) {
+        const s = String(headers[j] == null ? '' : headers[j]).toLowerCase().trim();
+        if (s === 'итого') { totalCol = j; break; }
+    }
+
+    let dateCol = -1;
+    for (let j = 0; j < Math.min(5, headers.length); j++) {
+        let dateHits = 0;
+        for (let i = headerRow + 1; i < Math.min(headerRow + 12, rows.length); i++) {
+            const r = rows[i];
+            if (r && looksLikeDate(r[j])) dateHits++;
+        }
+        if (dateHits >= 2) { dateCol = j; break; }
+    }
+    if (dateCol === -1) return null;
+
+    let endRow = rows.length;
+    for (let i = rows.length - 1; i > headerRow; i--) {
+        const row = rows[i];
+        if (!row) continue;
+        const joined = row.map(c => String(c == null ? '' : c)).join(' ').toLowerCase();
+        if (joined.includes('итого') && row.some(c => typeof c === 'number' && c > 0)) { endRow = i; break; }
+    }
+
+    const map = new Map();
+    const companiesSet = new Set();
+    const datesSet = new Set();
+
+    for (let i = headerRow + 1; i < endRow; i++) {
+        const row = rows[i];
+        if (!row) continue;
+        const date = normalizeDate(row[dateCol]);
+        if (!date) continue;
+        let rowHasValue = false;
+        for (const cc of companyColumns) {
+            const rawVal = row[cc.col];
+            if (rawVal === '' || rawVal === null || rawVal === undefined) continue;
+            const val = parseFloat(rawVal);
+            if (isNaN(val) || val === 0) continue;
+            rowHasValue = true;
+            const parts = cc.text.split(/[,;]+/).map(s => s.trim()).filter(s => s);
+            if (parts.length === 0) continue;
+            const share = val / parts.length;
+            for (const p of parts) {
+                companiesSet.add(p);
+                const key = p + '|' + date;
+                map.set(key, (map.get(key) || 0) + share);
+            }
+        }
+        if (rowHasValue) datesSet.add(date);
+    }
+
+    return {
+        companies: Array.from(companiesSet).sort(),
+        dates: Array.from(datesSet).sort(),
+        map
+    };
+}
+
+function handleInTransitFile(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+
+                const parsed = parseInTransitSheet(rows);
+                if (!parsed) {
+                    inTransitSummary = { companies: [], dates: [], map: new Map() };
+                    inTransitFileLoaded = true;
+                    resolve();
+                    return;
+                }
+
+                inTransitSummary = parsed;
+
+                inTransitData = {};
+                inTransitSummary.companies.forEach(company => {
+                    let total = 0;
+                    inTransitSummary.dates.forEach(date => {
+                        total += inTransitSummary.map.get(company + '|' + date) || 0;
+                    });
+                    inTransitData[company] = total;
+                });
+
+                inTransitRows = inTransitSummary.companies.map(company => {
+                    const row = { company, plannedDate: '' };
+                    inTransitSummary.dates.forEach(date => {
+                        row[date] = inTransitSummary.map.get(company + '|' + date) || 0;
+                    });
+                    return row;
+                });
+
+                inTransitFileLoaded = true;
+                selectedCompanyInTransit = [];
+
+                resolve();
+            } catch (err) { reject('Ошибка при чтении файла «КНТ в пути»: ' + err.message); }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+function handleTariffFile(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const parsed = parseTariffWorkbook(workbook);
+                if (!parsed || parsed.carriers === 0) { reject('Не удалось распознать ни одной вкладки с тарифами.'); return; }
+                tariffData = parsed.data;
+                tariffMeta = { carriers: parsed.carriers, terminals: parsed.terminals };
+                resolve({ carriers: parsed.carriers, terminals: parsed.terminals });
+            } catch (err) { reject('Ошибка при чтении файла тарифов: ' + err.message); }
+        };
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+function formatNumber(num) {
+    if (num === undefined || num === null || isNaN(num)) return '0';
+    if (Number.isInteger(num)) return num.toString();
+    return num.toFixed(1);
+}
+
+/* ============================================================
+   СВОДНАЯ ПО СКЛАДАМ
+   ============================================================ */
+function buildSummaryTable(data) {
+    let sortedData = [];
+    let totals = { confirmed: 0, approved: 0, cancelled: 0, unplanned: 0, total: 0, inTransit: 0 };
+    if (data && data.length > 0) {
+        sortedData = data.map(row => {
+            let subWarehouse = row.subWarehouse;
+            if (subWarehouse === "Инстротех РЦ 6") subWarehouse = "РЦ 6";
+            else if (subWarehouse === "Новотех РЦ 8") subWarehouse = "РЦ 8";
+            else if (subWarehouse === "Каскад РЦ Лешино") subWarehouse = "РЦ Лешино";
+            else if (subWarehouse === "Техномир РЦ Лешино") subWarehouse = "РЦ Лешино";
+            else if (subWarehouse === "Марникс РЦ 7") subWarehouse = "РЦ 7";
+            else if (subWarehouse === "Креусс РЦ 1") subWarehouse = "РЦ НСБ";
+            return { ...row, displayWarehouse: subWarehouse };
+        });
+        sortedData.sort((a, b) => a.displayWarehouse.localeCompare(b.displayWarehouse));
+        sortedData.forEach(row => {
+            totals.confirmed += row.confirmed;
+            totals.approved += row.approved;
+            totals.cancelled += row.cancelled;
+            totals.unplanned += row.unplanned;
+            totals.total += row.total;
+            let company = row.company.trim();
+            let inTransitVal = 0;
+            if (inTransitData[company] !== undefined) inTransitVal = inTransitData[company];
+            else {
+                for (let key in inTransitData) {
+                    if (key.toLowerCase() === company.toLowerCase()) { inTransitVal = inTransitData[key]; break; }
+                }
+            }
+            totals.inTransit += inTransitVal;
+        });
+    }
+    let html = `<table class="summary-table"><thead><tr>
+        <th>РЦ</th><th>Компания</th><th>Подтверждено</th><th>На утверждении</th>
+        <th>Отмененные</th><th>Не запланировано</th><th>Всего</th>
+        <th class="col-in-transit">В пути</th><th class="col-new-total">ИТОГО</th>
+    </tr></thead><tbody>`;
+    if (sortedData.length === 0) {
+        html += `<tr><td colspan="9" style="text-align:center;padding:20px;">Нет данных для отображения</td></tr>`;
+    } else {
+        sortedData.forEach(row => {
+            let company = row.company.trim();
+            let inTransitVal = 0;
+            if (inTransitData[company] !== undefined) inTransitVal = inTransitData[company];
+            else {
+                for (let key in inTransitData) {
+                    if (key.toLowerCase() === company.toLowerCase()) { inTransitVal = inTransitData[key]; break; }
+                }
+            }
+            const totalVal = row.total;
+            const newTotal = totalVal + inTransitVal;
+            html += `<tr>
+                <td>${row.displayWarehouse}</td>
+                <td>${row.company}</td>
+                <td>${formatNumber(row.confirmed)}</td>
+                <td>${formatNumber(row.approved)}</td>
+                <td>${formatNumber(row.cancelled)}</td>
+                <td>${formatNumber(row.unplanned)}</td>
+                <td>${formatNumber(totalVal)}</td>
+                <td class="col-in-transit">${formatNumber(inTransitVal)}</td>
+                <td class="col-new-total">${formatNumber(newTotal)}</td>
+            </tr>`;
+        });
+        const newTotalSum = totals.total + totals.inTransit;
+        html += `<tr class="total-row">
+            <td colspan="2"><strong>Итого:</strong></td>
+            <td><strong>${Math.round(totals.confirmed)}</strong></td>
+            <td><strong>${Math.round(totals.approved)}</strong></td>
+            <td><strong>${Math.round(totals.cancelled)}</strong></td>
+            <td><strong>${Math.round(totals.unplanned)}</strong></td>
+            <td><strong>${Math.round(totals.total)}</strong></td>
+            <td class="col-in-transit"><strong>${formatNumber(totals.inTransit)}</strong></td>
+            <td class="col-new-total"><strong>${formatNumber(newTotalSum)}</strong></td>
+        </tr>`;
+    }
+    html += `</tbody></table>`;
+    summaryWrap.innerHTML = html;
+}
+
+/* ============================================================
+   ОБРАБОТЧИК КНОПКИ «ЗАГРУЗИТЬ ВСЕ»
+   ============================================================ */
+uploadAllBtn.addEventListener('click', async function() {
+    const file1 = fileInput.files[0];
+    const file2 = fileInput2.files[0];
+
+    if (!file1 && !file2) {
+        uploadStatus.textContent = '⚠️ Выберите хотя бы один файл.';
+        uploadStatus.style.color = '#b77';
+        uploadStatus2.textContent = '';
+        return;
+    }
+
+    uploadStatus.textContent = '⏳ Загрузка...';
+    uploadStatus.style.color = '#1f7b4d';
+    uploadStatus2.textContent = '⏳ Загрузка...';
+    uploadStatus2.style.color = '#1f7b4d';
+
+    try {
+        if (file1) {
+            try {
+                await handleMainFile(file1);
+                uploadStatus.textContent = '✅ Список КНТ загружен.';
+                uploadStatus.style.color = '#1f7b4d';
+            } catch (e) {
+                uploadStatus.textContent = '❌ ' + e;
+                uploadStatus.style.color = '#b33';
+            }
+        } else {
+            uploadStatus.textContent = '⚠️ Список КНТ не выбран.';
+            uploadStatus.style.color = '#b77';
+        }
+
+        if (file2) {
+            if (summaryRows.length === 0) {
+                uploadStatus2.textContent = '❌ Сначала загрузите Список КНТ.';
+                uploadStatus2.style.color = '#b33';
+            } else {
+                try {
+                    await handleInTransitFile(file2);
+                    uploadStatus2.textContent = '✅ КНТ в пути загружен.';
+                    uploadStatus2.style.color = '#1f7b4d';
+                } catch (e) {
+                    uploadStatus2.textContent = '❌ ' + e;
+                    uploadStatus2.style.color = '#b33';
+                }
+            }
+        } else {
+            uploadStatus2.textContent = '⚠️ КНТ в пути не выбран.';
+            uploadStatus2.style.color = '#b77';
+        }
+
+        if (summaryRows.length > 0) {
+            buildSummaryTable(summaryRows);
+            buildSummaryInTransitTable();
+            renderDetailTerminal();
+            renderDetailUnload();
+            renderDetailInTransit();
+            footerNote.textContent = `Всего контейнеров: ${detailRows.length}  ·  Данные обновлены`;
+        } else {
+            buildSummaryTable([]);
+            summaryTerminalWrap.innerHTML = '<div class="empty-message">Загрузите файл для отображения данных</div>';
+            detailWrap.innerHTML = '<div class="empty-message">Загрузите файл для отображения данных</div>';
+            summaryUnloadWrap.innerHTML = '<div class="empty-message">Загрузите файл для отображения данных</div>';
+            detailUnloadWrap.innerHTML = '<div class="empty-message">Загрузите файл для отображения данных</div>';
+            summaryInTransitWrap.innerHTML = '<div class="empty-message">Загрузите файл «КНТ в пути» для отображения данных</div>';
+            if (detailInTransitWrap) detailInTransitWrap.innerHTML = '<div class="empty-message">Загрузите файл «КНТ в пути» для отображения данных</div>';
+            if (!summaryVisibleTerminal) summaryTerminalWrap.classList.add('hidden');
+            if (!detailVisibleTerminal) detailWrap.classList.add('hidden');
+            if (!summaryVisibleUnload) summaryUnloadWrap.classList.add('hidden');
+            if (!detailVisibleUnload) detailUnloadWrap.classList.add('hidden');
+            if (!summaryVisibleInTransit) summaryInTransitWrap.classList.add('hidden');
+        }
+    } catch (err) {
+        console.error(err);
+        uploadStatus.textContent = '❌ Ошибка: ' + err.message;
+        uploadStatus.style.color = '#b33';
+    }
+});
+
+/* ============================================================
+   ЗАГРУЗКА ТАРИФОВ
+   ============================================================ */
+uploadTariffBtn.addEventListener('click', async function() {
+    const file = tariffFileInput.files[0];
+    if (!file) { updateTariffStatusFromMemory(); return; }
+    tariffUploadStatus.textContent = '⏳ Загрузка...';
+    tariffUploadStatus.style.color = '#1f7b4d';
+    try {
+        const result = await handleTariffFile(file);
+        tariffFileName = file.name;
+        const saved = saveTariffData();
+        tariffUploadStatus.textContent = saved
+            ? `✅ ${result.carriers} перевоз., ${result.terminals} терм. (сохранено)`
+            : `✅ ${result.carriers} перевоз., ${result.terminals} терм. (не сохранено)`;
+        tariffUploadStatus.style.color = '#1f7b4d';
+        tariffUploadStatus.title = `Файл: ${tariffFileName}\nПеревозчиков: ${result.carriers}\nТерминалов: ${result.terminals}`;
+        tariffFileInput.value = '';
+        if (detailRows.length > 0) renderDetailTerminal();
+    } catch (err) {
+        tariffUploadStatus.textContent = '❌ Ошибка';
+        tariffUploadStatus.style.color = '#b33';
+        tariffUploadStatus.title = err.message || '';
+    }
+});
+
+/* ============================================================
+   СТАТУСЫ ФАЙЛОВ
+   ============================================================ */
+fileInput.addEventListener('change', function() {
+    if (this.files.length > 0) { uploadStatus.textContent = '📂 Файл выбран'; uploadStatus.style.color = '#1f7b4d'; }
+    else { uploadStatus.textContent = '📂 Файл не выбран'; uploadStatus.style.color = '#6a7e96'; }
+});
+fileInput2.addEventListener('change', function() {
+    if (this.files.length > 0) { uploadStatus2.textContent = '📂 Файл выбран'; uploadStatus2.style.color = '#1f7b4d'; }
+    else { uploadStatus2.textContent = '📂 Файл не выбран'; uploadStatus2.style.color = '#6a7e96'; }
+});
+tariffFileInput.addEventListener('change', function() {
+    if (this.files.length > 0) {
+        tariffUploadStatus.textContent = `📂 ${this.files[0].name} — нажмите «Загрузить»`;
+        tariffUploadStatus.style.color = '#1f7b4d';
+        tariffUploadStatus.title = '';
+    } else { updateTariffStatusFromMemory(); }
+});
+
+/* ============================================================
+   ИНИЦИАЛИЗАЦИЯ
+   ============================================================ */
+window.addEventListener('load', function() {
+    buildSummaryTable([]);
+    summaryTerminalWrap.innerHTML = '<div class="empty-message">Загрузите файл для отображения данных</div>';
+    detailWrap.innerHTML = '<div class="empty-message">Загрузите файл для отображения данных</div>';
+    summaryUnloadWrap.innerHTML = '<div class="empty-message">Загрузите файл для отображения данных</div>';
+    detailUnloadWrap.innerHTML = '<div class="empty-message">Загрузите файл для отображения данных</div>';
+    summaryInTransitWrap.innerHTML = '<div class="empty-message">Загрузите файл «КНТ в пути» для отображения данных</div>';
+    if (detailInTransitWrap) detailInTransitWrap.innerHTML = '<div class="empty-message">Загрузите файл «КНТ в пути» для отображения данных</div>';
+    uploadStatus.textContent = '📂 Файл не выбран'; uploadStatus.style.color = '#6a7e96';
+    uploadStatus2.textContent = '📂 Файл не выбран'; uploadStatus2.style.color = '#6a7e96';
+    footerNote.textContent = 'Данные не загружены';
+    if (loadTariffData()) updateTariffStatusFromMemory();
+    else { tariffUploadStatus.textContent = 'Файл не выбран'; tariffUploadStatus.style.color = '#6a7e96'; }
+    summaryVisibleTerminal = true; toggleSummaryBtnTerminal.textContent = '▼';
+    summaryTerminalWrap.classList.remove('hidden');
+    detailVisibleTerminal = false; toggleDetailBtnTerminal.textContent = '▲';
+    detailWrap.classList.add('hidden');
+    summaryVisibleUnload = true; toggleSummaryBtnUnload.textContent = '▼';
+    summaryUnloadWrap.classList.remove('hidden');
+    detailVisibleUnload = false; toggleDetailBtnUnload.textContent = '▲';
+    detailUnloadWrap.classList.add('hidden');
+    summaryVisibleInTransit = true; toggleSummaryBtnInTransit.textContent = '▼';
+    summaryInTransitWrap.classList.remove('hidden');
+    detailVisibleInTransit = false;
+    if (toggleDetailBtnInTransit) toggleDetailBtnInTransit.textContent = '▲';
+    if (detailInTransitWrap) detailInTransitWrap.classList.add('hidden');
+    tariffUploadBlock.classList.remove('visible');
+    attachFilterEventsTerminal();
+    attachFilterEventsUnload();
+    attachFilterEventsInTransit();
+});
+</script>
+</body>
+</html>
